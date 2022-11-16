@@ -116,27 +116,7 @@ implicit none
  qcTOT = 0.
 
  do i = 1,nclass
-<<<<<<< HEAD
-   species = int(stand_all(4,i))
-     param = pCrobas(:,species)
-     qc(i) = 0.
 
-     par_sla = param(3)
-   par_sla0 = param(39)
-   par_tsla = param(40)
-   age = STAND_all(7,i)
-   par_sla = par_sla + (par_sla0 - par_sla) * Exp(-ln2 * (age / par_tsla) ** 2.)
-
-     ht(i) = STAND_all(11,i)   ! H
-     hc(i) = STAND_all(14,i)   ! Hc
-     h(i) = ht(i) - hc(i)        ! Lc
-     LAIe(i) = STAND_all(19,i) ! leff
-     k(i) = PARAM(4)               ! k
-     LAI(i) = STAND_all(33,i) * par_sla / 10000.   ! WF_stand * sla
-     ! par_betab(i) = PARAM(17)   ! betab
-     rc(i) = STAND_all(15,i)/2.         ! rc crown radius
-     N(i) = STAND_all(17,i) / 10000.   ! N per m2
-=======
 	 species = int(stand_all(4,i))
 	 if(species==0) then
 		 ht(i) = 0.   ! H
@@ -168,7 +148,6 @@ implicit none
 		 rc(i) = STAND_all(15,i)/2.         ! rc crown radius
 		 N(i) = STAND_all(17,i) / 10000.   ! N per m2
 	 endif
->>>>>>> 58cb4f7b45a3f173c4464c57b02177c1aeed81c1
  end do
 
        nv= 2*nclass
