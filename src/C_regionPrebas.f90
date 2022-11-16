@@ -130,38 +130,38 @@ multiOut(:,1,4,:,1) = initVar(:,1,:) !initialize species
     ! open(3,file="test3.txt")
 
 ! write(2,*) "compHarv",compHarv
-!!inititialize A and biomasses
-do i = 1,nSites
- do ijj = 1,nLayers(i)
-	if(initVar(i,5,ijj) == 0.) then
-		initVar(i,7,ijj) = 0.
-		multiOut(i,1,(/24,25,30,31,32,33,47,48,49,50,51,54/),ijj,1)=0.
-	else
-		species = int(initVar(i,1,ijj))
-		if(species>0) then
-		if(initVar(i,7,ijj)==0. .and. initVar(i,5,ijj) > 0.) then
-			initVar(i,7,ijj) = pCrobas(38,species)/pCrobas(15,species) * (initVar(i,3,ijj) -&
-				initVar(i,6,ijj))**pCrobas(11,species)!A = p_ksi/p_rhof * Lc^p_z
-		endif
-		call initBiomasses(pCrobas(:,species),initVar(i,:,ijj),siteInfo(i,3),multiOut(i,1,:,ijj,1))
-		endif
-	endif
- enddo
- relBA(i,1:nLayers(i)) = initVar(i,5,1:nLayers(i))/sum(initVar(i,5,1:nLayers(i)))
-enddo
-
-if(startSimYear>1) then
- do i = 1,nSites
-	initVar(i,1,1:nLayers(i)) = multiOut(i,(startSimYear-1),4,1:nLayers(i),1)
-	initVar(i,2,1:nLayers(i)) = multiOut(i,(startSimYear-1),7,1:nLayers(i),1)
-	initVar(i,3:6,1:nLayers(i)) = multiOut(i,(startSimYear-1),11:14,1:nLayers(i),1)
-	initVar(i,7,1:nLayers(i)) = multiOut(i,(startSimYear-1),16,1:nLayers(i),1)
- enddo
- yearXrepl = multiOut(:,startSimYear,1,1,2)
-else
- multiOut(:,1,7,:,1) = initVar(:,2,:) !initialize age used in the mitigation scenario to select the sites to harvest
- multiOut(:,1,4,:,1) = initVar(:,1,:) !initialize species
-endif
+! !!inititialize A and biomasses
+! do i = 1,nSites
+!  do ijj = 1,nLayers(i)
+! 	if(initVar(i,5,ijj) == 0.) then
+! 		initVar(i,7,ijj) = 0.
+! 		multiOut(i,1,(/24,25,30,31,32,33,47,48,49,50,51,54/),ijj,1)=0.
+! 	else
+! 		species = int(initVar(i,1,ijj))
+! 		if(species>0) then
+! 		if(initVar(i,7,ijj)==0. .and. initVar(i,5,ijj) > 0.) then
+! 			initVar(i,7,ijj) = pCrobas(38,species)/pCrobas(15,species) * (initVar(i,3,ijj) -&
+! 				initVar(i,6,ijj))**pCrobas(11,species)!A = p_ksi/p_rhof * Lc^p_z
+! 		endif
+! 		call initBiomasses(pCrobas(:,species),initVar(i,:,ijj),siteInfo(i,3),multiOut(i,1,:,ijj,1))
+! 		endif
+! 	endif
+!  enddo
+!  relBA(i,1:nLayers(i)) = initVar(i,5,1:nLayers(i))/sum(initVar(i,5,1:nLayers(i)))
+! enddo
+!
+! if(startSimYear>1) then
+!  do i = 1,nSites
+! 	initVar(i,1,1:nLayers(i)) = multiOut(i,(startSimYear-1),4,1:nLayers(i),1)
+! 	initVar(i,2,1:nLayers(i)) = multiOut(i,(startSimYear-1),7,1:nLayers(i),1)
+! 	initVar(i,3:6,1:nLayers(i)) = multiOut(i,(startSimYear-1),11:14,1:nLayers(i),1)
+! 	initVar(i,7,1:nLayers(i)) = multiOut(i,(startSimYear-1),16,1:nLayers(i),1)
+!  enddo
+!  yearXrepl = multiOut(:,startSimYear,1,1,2)
+! else
+!  multiOut(:,1,7,:,1) = initVar(:,2,:) !initialize age used in the mitigation scenario to select the sites to harvest
+!  multiOut(:,1,4,:,1) = initVar(:,1,:) !initialize species
+! endif
 
 ! do ij = startSimYear,maxYears
 !     ! open(1,file="test1.txt")
