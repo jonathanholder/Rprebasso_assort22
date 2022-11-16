@@ -83,7 +83,7 @@ REAL (kind=8) :: ets
 
 !jhup ASSORTMENTS: SETTINGS
 ! switch between generic/simple (1) and complex/taper+qred assortments (2)
-assortType = INT(2)
+assortType = INT(1)
 
 !ratio of stumps extracted if they are collected/stumpsampled=T
 stumprecoveryrate = 0.9 ! NOTE: != stumpratio (the ratio of stump harvesting conducted if prerequisites are met)
