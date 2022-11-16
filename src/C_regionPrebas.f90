@@ -108,18 +108,18 @@ mkta = 5
 
 
 !!!!initialize run
-! multiOut = 0.
-! yearXrepl = 0.
-! soilC = soilCinOut
-! soilCtot = soilCtotInOut
-! multiWood = 0.
-! cuttingArea(:,2) = 0.
-! cuttingArea(:,4) = 0.
-! cuttingArea(:,6) = 0.
-! cuttingArea(:,7) = 0. !jhup
-! cuttingArea(:,8) = 0.
-! cuttingArea(:,9) = 0.
-! thinFact = compHarv(2)
+! !multiOut = 0.
+yearXrepl = 0.
+soilC = soilCinOut
+soilCtot = soilCtotInOut
+multiWood = 0.
+cuttingArea(:,2) = 0.
+cuttingArea(:,4) = 0.
+cuttingArea(:,6) = 0.
+cuttingArea(:,7) = 0. !jhup
+cuttingArea(:,8) = 0.
+cuttingArea(:,9) = 0.
+thinFact = compHarv(2)
 ! tTapioX = tTapio
 ! ftTapioX = ftTapio
 ! multiOut(:,1,7,:,1) = initVar(:,2,:) !initialize age used in the mitigation scenario to select the sites to harvest
