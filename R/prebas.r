@@ -32,7 +32,7 @@ prebas <- function(nYears,
                    limPer=0.5,
                    ftTapioPar = ftTapio,
                    tTapioPar = tTapio,
-                   GVrun = 1,
+                   GVrun = 1, ###flag for Ground vegetation model 1-> runs the GV model
                    thinInt=-999.,
                    fertThin=0.,
                    nYearsFert=20,
@@ -53,9 +53,10 @@ prebas <- function(nYears,
 
   ###proc thinnings##
   if(all(is.na(thinning))){
-    thinning=matrix(0,1,9)
-    thinning[,9] <- -999
-  }
+
+    thinning=matrix(0,1,10)
+    thinning[,9:10] <- -999
+  } 
   thinning[is.na(thinning)] <- -999
   nThinning = max(1,nrow(thinning))
   thinning <- thinning[order(thinning[,2],thinning[,1],thinning[,3]),]
@@ -181,7 +182,7 @@ prebas <- function(nYears,
   biomasses[which(is.na(biomasses))] <- 0.
   output[1,c(33,25,47:49,24,32,50,51,31,30,54),,1] <- biomasses
   # print(biomasses)
-  initVar <- initVar[1:7,]
+  initVar <- as.matrix(initVar[1:7,])
   # PREBASversion <- paste("prebas_v",PREBASversion,sep='')
 
   ###initialize siteType and alfar parameter

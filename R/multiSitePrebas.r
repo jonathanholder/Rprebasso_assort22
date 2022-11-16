@@ -44,6 +44,7 @@ InitMultiSite <- function(nYearsMS,
 ){
 
   nSites <- length(nYearsMS)
+  if(length(mortMod)==1) mortMod <- rep(mortMod,2)
   if(length(thinInt)==1) thinInt <- rep(thinInt,nSites)
   if(all(is.na(thdPer))) thdPer <- rep(0.5,nSites)
   if(all(is.na(limPer))) limPer <- rep(0.5,nSites)
@@ -151,12 +152,12 @@ InitMultiSite <- function(nYearsMS,
         c(ClCutD_Pine(ETSmean[climIDs[i]],ETSthres,siteInfo[i,3]),
           ClCutD_Spruce(ETSmean[climIDs[i]],ETSthres,siteInfo[i,3]),
           ClCutD_Birch(ETSmean[climIDs[i]],ETSthres,siteInfo[i,3]),
-          NA,NA,NA,NA,NA,NA,NA)  ###"fasy","pipi","eugl","rops","popu",'eugrur','piab(DE)')
+          NA,NA,NA,NA,NA,NA,NA,NA)  ###"fasy","pipi","eugl","rops","popu",'eugrur','piab(DE)','quil')
     if(ClCut[i]==1 & all(is.na(inAclct[i,]))) inAclct[i,] <-
         c(ClCutA_Pine(ETSmean[climIDs[i]],ETSthres,siteInfo[i,3]),
           ClCutA_Spruce(ETSmean[climIDs[i]],ETSthres,siteInfo[i,3]),
           ClCutA_Birch(ETSmean[climIDs[i]],ETSthres,siteInfo[i,3]),
-          80,50,13,30,50,13,120)  ###"fasy","pipi","eugl","rops","popu",'eugrur','piab(DE)')
+          80,50,13,30,50,13,120,100)  ###"fasy","pipi","eugl","rops","popu",'eugrur','piab(DE)','quil')
     if(any(!is.na(inDclct[i,]))) inDclct[i,is.na(inDclct[i,])] <- max(inDclct[i,],na.rm=T)
     if(all(is.na(inDclct[i,]))) inDclct[i,] <- 9999999.99
     if(any(!is.na(inAclct[i,]))) inAclct[i,is.na(inAclct[i,])] <- max(inAclct[i,],na.rm=T)
@@ -168,8 +169,8 @@ InitMultiSite <- function(nYearsMS,
   if(all(is.na(multiThin))){
     multiNthin <- rep(0,nSites)
     maxThin <- 2
-    multiThin <- array(0, dim=c(nSites,maxThin,9))
-    multiThin[,,9] <- -999
+    multiThin <- array(0, dim=c(nSites,maxThin,10))
+    multiThin[,,9:10] <- -999
   }
   multiThin[is.na(multiThin)] <- -999
 
@@ -238,14 +239,17 @@ InitMultiSite <- function(nYearsMS,
     multiInitVar[,2,][which(multiInitVar[,2,]<1)] <- 1
 
     ####compute A
-    for(ikj in 1:maxNlayers){
-      not0 <- which(multiInitVar[,3,ikj]>0)
-      p_ksi <- pCROBAS[38,multiInitVar[not0,1,ikj]]
-      p_rhof <- pCROBAS[15,multiInitVar[not0,1,ikj]]
-      p_z <- pCROBAS[11,multiInitVar[not0,1,ikj]]
-      Lc <- multiInitVar[not0,3,ikj] - multiInitVar[not0,6,ikj]
-      A <- as.numeric(p_ksi/p_rhof * Lc^p_z)
-      multiInitVar[not0,7,ikj] <- A
+
+    if(all(is.na(multiInitVar[,7,]))|all(multiInitVar[,7,]==0)){
+      for(ikj in 1:maxNlayers){
+        not0 <- which(multiInitVar[,3,ikj]>0)
+        p_ksi <- pCROBAS[38,multiInitVar[not0,1,ikj]]
+        p_rhof <- pCROBAS[15,multiInitVar[not0,1,ikj]]
+        p_z <- pCROBAS[11,multiInitVar[not0,1,ikj]]
+        Lc <- multiInitVar[not0,3,ikj] - multiInitVar[not0,6,ikj]
+        A <- as.numeric(p_ksi/p_rhof * Lc^p_z)
+        multiInitVar[not0,7,ikj] <- A     
+      } 
     }
     LcCheck <- multiInitVar[,3,] - multiInitVar[,6,]
     if(any(LcCheck<0.)) return("check, some Lc is negative")
@@ -389,6 +393,11 @@ multiPrebas <- function(multiSiteInit,
   if(oldLayer==1){
     multiSiteInit <- addOldLayer(multiSiteInit)
   }
+
+  ####avoid species = 0  replace with species 1 when layer is empty
+  multiSiteInit$multiInitVar[,1,][which(multiSiteInit$multiInitVar[,1,]==0)] <- 1
+  multiSiteInit$multiOut[,,4,,1][which(multiSiteInit$multiOut[,,4,,1]==0)] = 1
+
   prebas <- .Fortran("multiPrebas",
                      multiOut = as.array(multiSiteInit$multiOut),
                      nSites = as.integer(multiSiteInit$nSites),
@@ -440,7 +449,7 @@ multiPrebas <- function(multiSiteInit,
                      flagFert = as.integer(0),
                      nYearsFert = as.integer(nYearsFert),
                      oldLayer=as.integer(oldLayer),
-                     mortMod=as.integer(multiSiteInit$mortMod)
+                     mortMod=as.double(multiSiteInit$mortMod)
   )
   dimnames(prebas$multiOut) <- dimnames(multiSiteInit$multiOut)
   dimnames(prebas$multiInitVar) <- dimnames(multiSiteInit$multiInitVar)
@@ -470,7 +479,8 @@ regionPrebas <- function(multiSiteInit,
                          siteOrder=NA,
                          fertThin = 0.,
                          nYearsFert = 20,
-                         oldLayer=0 ####oldLayer == 1 will leave 5-10% basal area at clearcut in the old layer
+                         oldLayer=0, ####oldLayer == 1 will leave 5-10% basal area at clearcut in the old layer
+                         startSimYear=1
 ){
 
   if(length(HarvLim)==2) HarvLim <- matrix(HarvLim,multiSiteInit$maxYears,2,byrow = T)
@@ -513,6 +523,11 @@ if(ageHarvPrior>0){
   if(oldLayer==1){
     multiSiteInit <- addOldLayer(multiSiteInit)
   }
+
+  ####avoid species = 0  replace with species 1 when layer is empty
+  multiSiteInit$multiInitVar[,1,][which(multiSiteInit$multiInitVar[,1,]==0)] <- 1
+  multiSiteInit$multiOut[,,4,,1][which(multiSiteInit$multiOut[,,4,,1]==0)] = 1
+
   prebas <- .Fortran("regionPrebas",
                      siteOrder = as.matrix(siteOrder),
                      HarvLim = as.matrix(HarvLim),
@@ -571,7 +586,154 @@ if(ageHarvPrior>0){
                      flagFert = as.integer(rep(0,multiSiteInit$nSites)),
                      nYearsFert = as.integer(nYearsFert),
                      oldLayer=as.integer(oldLayer),
-                     mortMod=as.integer(multiSiteInit$mortMod)
+                     mortMod=as.double(multiSiteInit$mortMod),
+                     startSimYear = as.integer(startSimYear)
+  )
+  class(prebas) <- "regionPrebas"
+  if(prebas$maxNlayers>1){
+    rescalVbyArea <- prebas$multiOut[,,37,,1] * prebas$areas
+    prebas$totHarv <- apply(rescalVbyArea,2,sum)
+  }else{
+    prebas$totHarv <- colSums(prebas$multiOut[,,37,1,1]*prebas$areas)
+  }
+  
+  dimnames(prebas$multiOut) <- dimnames(multiSiteInit$multiOut)
+  dimnames(prebas$multiInitVar) <- dimnames(multiSiteInit$multiInitVar)
+  names(prebas$siteInfo) <- names(multiSiteInit$siteInfo)
+  return(prebas)
+}
+
+
+
+
+reStartRegionPrebas <- function(multiSiteInit,
+                         HarvLim = NA,
+                         minDharv = 999.,
+                         cutAreas = NA,  ### is a matrix: area of cuttings rows are years of simulations
+                         ###columns: clcutArea target(1), simulated clCut area(2) (set to 0. will be filled by prebas output);
+                         ####precom-thin target(3), sim(4); area firstThin targ(5), sim(6)
+                         compHarv=0,###flag for compensating harvest if harvest do not reach the desired levels
+                         ####compHarv=0 -> no compensation, compHarv=1 compensate harvest with clearcut
+                         ### compHarv=2 compensate harvest with thinnings
+                         thinFact=0.25, ####if compHarv = 2 -> thinFact is the percentage of thinning to compansate harvest
+                         #######compHarv[1]
+                         ageHarvPrior = 0, ####flag used in the IBC-carbon runs of
+                         ####the mitigation Scenario and biodiversity protection 
+                         ####scenario (protect). If higher then 0. the scenarios is activated and
+                         #####the sites are ordered according to the siteType and
+                         ###priority is given to the sites where age is lower then ageHarvPrior
+                         siteOrder=NA,
+                         fertThin = 0.,
+                         nYearsFert = 20,
+                         oldLayer=0, ####oldLayer == 1 will leave 5-10% basal area at clearcut in the old layer
+                         startSimYear
+){
+  
+  if(length(HarvLim)==2) HarvLim <- matrix(HarvLim,multiSiteInit$maxYears,2,byrow = T)
+  if(all(is.na(HarvLim))) HarvLim <- matrix(0.,multiSiteInit$maxYears,2)
+  if(all(is.na(cutAreas))) cutAreas <- matrix(-999.,(multiSiteInit$maxYears),6)
+  compHarv <- c(compHarv,thinFact)
+  if(ageHarvPrior > 0.){
+    sitesCl1 <- which(multiSiteInit$siteInfo[,3]<3.5)
+    sitesCl2 <- which(multiSiteInit$siteInfo[,3]>3.5)
+    siteOrder1 <- replicate(multiSiteInit$maxYears,sample(sitesCl1))
+    siteOrder2 <- replicate(multiSiteInit$maxYears,sample(sitesCl2))
+    siteOrder <- rbind(siteOrder1,siteOrder2)
+  }else if(all(is.na(siteOrder))){
+    siteOrder <- replicate(multiSiteInit$maxYears,sample(1:multiSiteInit$nSites))
+  }  
+  # reorder first year of siteOreder according to age of the stands, 
+  # because in Fortran first year has a bug probably 
+  # in the PACK function
+  if(ageHarvPrior>0){
+    domSp <- apply(multiSiteInit$multiInitVar[,5,],1,which.max)
+    agesX <- multiSiteInit$multiInitVar[,2,][cbind(1:multiSiteInit$nSites,domSp)]
+    newOrdX <- c(which(agesX[siteOrder[,1]] <= ageHarvPrior),
+                 which(agesX[siteOrder[,1]] > ageHarvPrior))
+    siteOrder[,1] <- siteOrder[newOrdX,1]
+  }  
+  
+  ###initialize siteType
+  multiSiteInit$multiOut[,,3,,1] <- array(multiSiteInit$siteInfo[,3],
+                                          dim=c(multiSiteInit$nSites,
+                                                multiSiteInit$maxYears,
+                                                multiSiteInit$maxNlayers))
+  for(ijj in 1:multiSiteInit$maxNlayers){
+    siteXs <- which(multiSiteInit$multiInitVar[,1,ijj] %in% 1:ncol(multiSiteInit$pCROBAS))
+    multiSiteInit$multiOut[siteXs,,3,ijj,2] =
+      matrix(multiSiteInit$pCROBAS[cbind((20+pmin(multiSiteInit$siteInfo[,3],5))[siteXs],
+                                         multiSiteInit$multiInitVar[siteXs,1,ijj])],
+             length(siteXs),multiSiteInit$maxYears)
+  }
+  
+  # if(FALSE){
+  if(oldLayer==1){
+    multiSiteInit <- addOldLayer(multiSiteInit)
+  }
+  ####avoid species = 0  replace with species 1 when layer is empty
+  multiSiteInit$multiInitVar[,1,][which(multiSiteInit$multiInitVar[,1,]==0)] <- 1
+  multiSiteInit$multiOut[,,4,,1][which(multiSiteInit$multiOut[,,4,,1]==0)] = 1
+  
+  prebas <- .Fortran("regionPrebas",
+                     siteOrder = as.matrix(siteOrder),
+                     HarvLim = as.matrix(HarvLim),
+                     minDharv = as.double(minDharv),
+                     multiOut = as.array(multiSiteInit$multiOut),
+                     nSites = as.integer(multiSiteInit$nSites),
+                     areas = as.double(multiSiteInit$areas),
+                     nClimID = as.integer(multiSiteInit$nClimID),
+                     nLayers = as.integer(multiSiteInit$nLayers),######
+                     maxYears = as.integer(multiSiteInit$maxYears),
+                     maxThin = as.integer(multiSiteInit$maxThin),
+                     nYears = as.integer(multiSiteInit$nYears),
+                     thinning=as.array(multiSiteInit$thinning),
+                     pCROBAS = as.matrix(multiSiteInit$pCROBAS),    ####
+                     allSp = as.integer(multiSiteInit$allSp),       ####
+                     siteInfo = as.matrix(multiSiteInit$siteInfo),  ####
+                     maxNlayers = as.integer(multiSiteInit$maxNlayers), ####
+                     nThinning=as.integer(multiSiteInit$nThinning),
+                     fAPAR=as.matrix(multiSiteInit$fAPAR),
+                     initClearcut=as.matrix(multiSiteInit$initClearcut),
+                     fixBAinitClarcut = as.double(multiSiteInit$fixBAinitClarcut),
+                     initCLcutRatio = as.matrix(multiSiteInit$initCLcutRatio),
+                     ETSy=as.matrix(multiSiteInit$ETSy),
+                     P0y=as.array(multiSiteInit$P0y),
+                     multiInitVar=as.array(multiSiteInit$multiInitVar),
+                     weather=as.array(multiSiteInit$weather),
+                     DOY= as.integer(multiSiteInit$DOY),
+                     pPRELES=as.double(multiSiteInit$pPRELES),
+                     etmodel=as.integer(multiSiteInit$etmodel),
+                     soilC = as.array(multiSiteInit$soilC),
+                     pYASSO=as.double(multiSiteInit$pYASSO),
+                     pAWEN = as.matrix(multiSiteInit$pAWEN),
+                     weatherYasso = as.array(multiSiteInit$weatherYasso),
+                     litterSize = as.array(multiSiteInit$litterSize),
+                     soilCtot = as.matrix(multiSiteInit$soilCtot),
+                     defaultThin=as.double(multiSiteInit$defaultThin),
+                     ClCut=as.double(multiSiteInit$ClCut),
+                     energyCut=as.double(multiSiteInit$energyCut),
+                     inDclct=as.matrix(multiSiteInit$inDclct),
+                     inAclct=as.matrix(multiSiteInit$inAclct),
+                     dailyPRELES = as.array(multiSiteInit$dailyPRELES),
+                     yassoRun=as.double(multiSiteInit$yassoRun),
+                     multiEnergyWood = as.array(multiSiteInit$multiEnergyWood),
+                     tapioPars = as.array(multiSiteInit$tapioPars),
+                     thdPer=as.double(multiSiteInit$thdPer),
+                     limPer=as.double(multiSiteInit$limPer),
+                     ftTapioPar = as.array(multiSiteInit$ftTapioPar),
+                     tTapioPar = as.array(multiSiteInit$tTapioPar),
+                     GVout = as.array(multiSiteInit$GVout),
+                     GVrun = as.integer(multiSiteInit$GVrun),
+                     cutAreas=as.matrix(cutAreas),
+                     compHarv=as.double(compHarv),
+                     thinInt=as.double(multiSiteInit$thinInt),
+                     ageHarvPrior = as.double(ageHarvPrior),
+                     fertThin = as.integer(fertThin),
+                     flagFert = as.integer(rep(0,multiSiteInit$nSites)),
+                     nYearsFert = as.integer(nYearsFert),
+                     oldLayer=as.integer(oldLayer),
+                     mortMod=as.double(multiSiteInit$mortMod),
+                     startSimYear = as.integer(startSimYear)
   )
   class(prebas) <- "regionPrebas"
   if(prebas$maxNlayers>1){

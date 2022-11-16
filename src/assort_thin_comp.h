@@ -3,7 +3,7 @@
 ! harvesting, litter, assortment processing
 
 ! input for assortments (prior to assortType, needed to fill multiWood)
-species = INT(multiOut(siteX,ij,4,ijj,1))
+species = int(max(1., multiOut(siteX,ij,4,ijj,1)))
 siteType = multiOut(siteX,ij,3,ijj,1)
 age = multiOut(siteX,ij,7,ijj,1)
 harvRatio = pharv(1,species)

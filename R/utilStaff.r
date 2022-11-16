@@ -707,13 +707,15 @@ varNames  <- c('siteID','gammaC','sitetype','species','ETS' ,'P0','age', 'DeadWo
           }
           # V <- modOutX[siteX,year,30,ij]
           Vmort <- modOutX[siteX,year,2,ij]
-          if(Vmort>0){
+          species <- modOutX[siteX,year,3,ij]
+          if(Vmort>0 & D>pCrobas[48,species]){
             # D <- modOutX[siteX,year,12,ij,1]
-            species <- modOutX[siteX,year,3,ij]
+            perVmort <- exp(-exp(pCrobas[35,species] + pCrobas[36,species]*(1:(nYearsX-year)) + 
+                                   pCrobas[37,species]*D + pCrobas[44,species]))
+            perVmort[which(perVmort<pCrobas[49,species])] <- 0
             deadWV[siteX,year,ij] = Vmort + deadWV[siteX,year,ij]
-            deadWV[siteX,(year+1):nYearsX,ij] = deadWV[siteX,(year+1):  nYearsX,ij] + Vmort *
-              exp(-exp(pCrobas[35,species] + pCrobas[36,species]*(1:(nYearsX-year)) + 
-                         pCrobas[37,species]*D + pCrobas[44,species])) 
+            deadWV[siteX,(year+1):nYearsX,ij] = deadWV[siteX,(year+1):nYearsX,ij] +
+              Vmort *perVmort
           }
         }
       }
@@ -734,31 +736,31 @@ varNames  <- c('siteID','gammaC','sitetype','species','ETS' ,'P0','age', 'DeadWo
     ###add layer for old layer in multiOut array
     dims=dim(multiSiteInit$multiOut);dims[4] <- maxNlayers
     multiOut = array(0,dim=dims)
-    multiOut[,,,-(maxNlayers),] = multiSiteInit$multiOut
+    multiOut[,,,1:(maxNlayers-1),] = multiSiteInit$multiOut
     multiSiteInit$multiOut <- multiOut
     ###add layer for old layer in initial state
     dims=dim(multiSiteInit$multiInitVar);dims[3] <- maxNlayers
     multiInitVar = array(0,dim=dims)
-    multiInitVar[,,-(maxNlayers)] = multiSiteInit$multiInitVar
+    multiInitVar[,,1:(maxNlayers-1)] = multiSiteInit$multiInitVar
     multiSiteInit$multiInitVar <- multiInitVar
     ###add layer
     multiSiteInit$nLayers = multiSiteInit$nLayers + 1
     ###add layer to nLayers in siteInfo
-    multiSiteInit$siteInfo[8] + multiSiteInit$siteInfo[8] + 1
+    multiSiteInit$siteInfo[,8] = multiSiteInit$siteInfo[,8] + 1
     ###add layer to initClCutRatio
     initCLcutRatio <- matrix(0.,multiSiteInit$nSites,
                              maxNlayers)
-    initCLcutRatio[,-maxNlayers] = multiSiteInit$initCLcutRatio
+    initCLcutRatio[,1:(maxNlayers-1)] = multiSiteInit$initCLcutRatio
     multiSiteInit$initCLcutRatio = initCLcutRatio
     
     dims=dim(multiSiteInit$soilC);dims[5] <- maxNlayers
     soilC = array(0,dim=dims)
-    soilC[,,,,-(maxNlayers)] = multiSiteInit$soilC
+    soilC[,,,,1:(maxNlayers-1)] = multiSiteInit$soilC
     multiSiteInit$soilC <- soilC
     
     dims=dim(multiSiteInit$multiEnergyWood);dims[3] <- maxNlayers
     multiEnergyWood = array(0,dim=dims)
-    multiEnergyWood[,,-(maxNlayers),] <- multiSiteInit$multiEnergyWood
+    multiEnergyWood[,,1:(maxNlayers-1),] <- multiSiteInit$multiEnergyWood
     multiSiteInit$multiEnergyWood <- multiEnergyWood
     
     return(multiSiteInit)

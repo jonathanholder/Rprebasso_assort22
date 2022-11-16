@@ -7,7 +7,7 @@ S_branch = 0.
 
 
 ! Assigning variables for assortment/harvest residue calculations
-species = stand_all(4,ij)
+species = int(max(1.,stand_all(4,ij)))
 harvRatio = pharv(1,species)
 energyRatio = pharv(2,species)
 stumpRatio = pharv(3,species)

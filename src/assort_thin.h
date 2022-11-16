@@ -20,7 +20,7 @@ Lc_rem = (stand_tot(49)-W_s)/(par_rhow * A_rem * (Nold-N) * par_betas)! sapwood 
 h_harvested = Hc_rem + Lc_rem
 
 ! additional variables
-species = stand_all(4,ij)
+species = int(max(1.,stand(4)))
 harvRatio = pharv(1,species)
 energyRatio = pharv(2,species)
 stumpRatio = pharv(3,species)
