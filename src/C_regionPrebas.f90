@@ -163,108 +163,108 @@ else
  multiOut(:,1,4,:,1) = initVar(:,1,:) !initialize species
 endif
 
-do ij = startSimYear,maxYears
-    ! open(1,file="test1.txt")
-	! write(1,*) ij, "start"
-	! close(1)
- roundWood = 0.
- energyWood(:) = 0.  !!energCuts
-
-if(ij>1) then
- if(ageMitigScen > 0.) then
-  do i = 1,nSites
-   if(oldLayer==1) then
-    jj = max((nLayers(i)-1),1)
-   else
-    jj = nLayers(i)
-   endif
-   domSp = maxloc(multiOut(i,ij,13,1:jj,1))
-   layerX = int(domSp(1))
-   age(i) = multiOut(i,ij,7,layerX,1)
-  enddo
-
-  ! write(1,*) ij, age
-  siteOrdX = real(siteOrder(:,ij),8)
-  call changeOrder(siteOrdX,age, &
-          siteOrdX,nSites,ageMitigScen)
-  siteOrder(:,ij) = int(siteOrdX)
- endif
-endif
- do iz = 1,nSites
-   i=siteOrder(iz,ij)
-  ClCutX = ClCut(i)
-  defaultThinX = defaultThin(i)
-  energyCutX = energyCuts(i)    !!energCuts
-  thinningX(:,:) = -999.
-  az = 0
-
-  if(ij > 1) then
-   soilC(i,ij,:,:,1:nLayers(i)) = soilC(i,(ij-1),:,:,1:nLayers(i))
-  endif
-
-!!!check if the limit has been exceeded if yes no harvest (thinning or clearcut will be performed)
-    if (cuttingArea(ij,1) > 0. .and. cuttingArea(ij,2) > cuttingArea(ij,1)) then !!!swithch off clear cuts if threshold area (cuttingArea(1)), has been reached
-   ClCutX = 0.
-  endif
-  if (HarvLim(ij,1) > 0. .and. roundWood >= HarvLim(ij,1)) then
-   ClCutX = 0.
-   defaultThinX = 0.
-  endif
-  if (HarvLim(ij,2) > 0. .and.  energyWood(1) >= HarvLim(ij,2)) then    !!energCuts
-   energyCutX = 0.
-  endif
-
-!!!check if the limit area for tendings has been exceeded if yes no tending havest
-  if (cuttingArea(ij,3) > 0. .and. cuttingArea(ij,4) > cuttingArea(ij,3)) then !!!swithch off tendings if threshold area (cuttingArea(3)), has been reached
-   tTapioX = tTapio * 1.e5
-  else
-   tTapioX = tTapio
-  endif
-!!!check if the limit area for firstThin has been exceeded if yes no firstThin havest
-  if (cuttingArea(ij,5) > 0. .and. cuttingArea(ij,6) > cuttingArea(ij,5)) then !!!swithch off firstThin if threshold area (cuttingArea(5)), has been reached
-   ftTapioX = ftTapio * 1.e5
-  else
-   ftTapioX = ftTapio
-  endif
-
-!!!
-	climID = siteInfo(i,2)
-	if(ij==int(yearXrepl(i)))then
-	!if(ij==int(min(yearXrepl(i),maxYears)))then
-	 ! initClearcut(i,5) = int(min(initClearcut(i,5), initClearcut(i,5) + maxYears - yearXrepl(i)))
-	 initClearcut(i,5) = int(initClearcut(i,5))
-	 yearXrepl(i) = 0.
-
-!if scenario = "oldLayer" do not consider the old layer
-   if(oldLayer==1) then
-    jj=max((nLayers(i)-1),1)
-   else
-    jj=nLayers(i)
-   endif
-
-   do ijj = 1,jj
-    species = int(multiOut(i,1,4,ijj,1))
-    initVar(i,1,ijj) = multiOut(i,1,4,ijj,1)
-    initVar(i,2,ijj) = initClearcut(i,5)
-    initVar(i,3,ijj) = initClearcut(i,1)
-    initVar(i,4,ijj) = initClearcut(i,2)
-    if(fixBAinitClarcut(i)==1) then
-     initVar(i,5,ijj) = initClearcut(i,3) * initCLcutRatio(i,ijj)
-    else
-     initVar(i,5,ijj) = initClearcut(i,3) * relBA(i,ijj)
-      endif
-	  initVar(i,6,ijj) = initClearcut(i,4)
-	  ! initVar(i,8,ijj) = 0. !!newX
-	  if(species>0) then
-	   initVar(i,7,ijj) = max(0.,pCrobas(38,species)/pCrobas(15,species) * (initClearcut(i,1) -&
-		 initClearcut(i,4))**pCrobas(11,species))!A = p_ksi/p_rhof * Lc^p_z
-	   do ki = 1,int(initClearcut(i,5)+1)
-	    multiOut(i,int(ij-initClearcut(i,5)+ki-1),7,ijj,1) = ki !#!#
-	   enddo !ki
-	   call initBiomasses(pCrobas(:,species),initVar(i,:,ijj),multiOut(i,ij,3,ijj,1),multiOut(i,(ij-1),:,ijj,1))
-	  endif
-	 enddo !ijj
-	endif
+! do ij = startSimYear,maxYears
+!     ! open(1,file="test1.txt")
+! 	! write(1,*) ij, "start"
+! 	! close(1)
+!  roundWood = 0.
+!  energyWood(:) = 0.  !!energCuts
+!
+! if(ij>1) then
+!  if(ageMitigScen > 0.) then
+!   do i = 1,nSites
+!    if(oldLayer==1) then
+!     jj = max((nLayers(i)-1),1)
+!    else
+!     jj = nLayers(i)
+!    endif
+!    domSp = maxloc(multiOut(i,ij,13,1:jj,1))
+!    layerX = int(domSp(1))
+!    age(i) = multiOut(i,ij,7,layerX,1)
+!   enddo
+!
+!   ! write(1,*) ij, age
+!   siteOrdX = real(siteOrder(:,ij),8)
+!   call changeOrder(siteOrdX,age, &
+!           siteOrdX,nSites,ageMitigScen)
+!   siteOrder(:,ij) = int(siteOrdX)
+!  endif
+! endif
+!  do iz = 1,nSites
+!    i=siteOrder(iz,ij)
+!   ClCutX = ClCut(i)
+!   defaultThinX = defaultThin(i)
+!   energyCutX = energyCuts(i)    !!energCuts
+!   thinningX(:,:) = -999.
+!   az = 0
+!
+!   if(ij > 1) then
+!    soilC(i,ij,:,:,1:nLayers(i)) = soilC(i,(ij-1),:,:,1:nLayers(i))
+!   endif
+!
+! !!!check if the limit has been exceeded if yes no harvest (thinning or clearcut will be performed)
+!     if (cuttingArea(ij,1) > 0. .and. cuttingArea(ij,2) > cuttingArea(ij,1)) then !!!swithch off clear cuts if threshold area (cuttingArea(1)), has been reached
+!    ClCutX = 0.
+!   endif
+!   if (HarvLim(ij,1) > 0. .and. roundWood >= HarvLim(ij,1)) then
+!    ClCutX = 0.
+!    defaultThinX = 0.
+!   endif
+!   if (HarvLim(ij,2) > 0. .and.  energyWood(1) >= HarvLim(ij,2)) then    !!energCuts
+!    energyCutX = 0.
+!   endif
+!
+! !!!check if the limit area for tendings has been exceeded if yes no tending havest
+!   if (cuttingArea(ij,3) > 0. .and. cuttingArea(ij,4) > cuttingArea(ij,3)) then !!!swithch off tendings if threshold area (cuttingArea(3)), has been reached
+!    tTapioX = tTapio * 1.e5
+!   else
+!    tTapioX = tTapio
+!   endif
+! !!!check if the limit area for firstThin has been exceeded if yes no firstThin havest
+!   if (cuttingArea(ij,5) > 0. .and. cuttingArea(ij,6) > cuttingArea(ij,5)) then !!!swithch off firstThin if threshold area (cuttingArea(5)), has been reached
+!    ftTapioX = ftTapio * 1.e5
+!   else
+!    ftTapioX = ftTapio
+!   endif
+!
+! !!!
+! 	climID = siteInfo(i,2)
+! 	if(ij==int(yearXrepl(i)))then
+! 	!if(ij==int(min(yearXrepl(i),maxYears)))then
+! 	 ! initClearcut(i,5) = int(min(initClearcut(i,5), initClearcut(i,5) + maxYears - yearXrepl(i)))
+! 	 initClearcut(i,5) = int(initClearcut(i,5))
+! 	 yearXrepl(i) = 0.
+!
+! !if scenario = "oldLayer" do not consider the old layer
+!    if(oldLayer==1) then
+!     jj=max((nLayers(i)-1),1)
+!    else
+!     jj=nLayers(i)
+!    endif
+!
+!    do ijj = 1,jj
+!     species = int(multiOut(i,1,4,ijj,1))
+!     initVar(i,1,ijj) = multiOut(i,1,4,ijj,1)
+!     initVar(i,2,ijj) = initClearcut(i,5)
+!     initVar(i,3,ijj) = initClearcut(i,1)
+!     initVar(i,4,ijj) = initClearcut(i,2)
+!     if(fixBAinitClarcut(i)==1) then
+!      initVar(i,5,ijj) = initClearcut(i,3) * initCLcutRatio(i,ijj)
+!     else
+!      initVar(i,5,ijj) = initClearcut(i,3) * relBA(i,ijj)
+!       endif
+! 	  initVar(i,6,ijj) = initClearcut(i,4)
+! 	  ! initVar(i,8,ijj) = 0. !!newX
+! 	  if(species>0) then
+! 	   initVar(i,7,ijj) = max(0.,pCrobas(38,species)/pCrobas(15,species) * (initClearcut(i,1) -&
+! 		 initClearcut(i,4))**pCrobas(11,species))!A = p_ksi/p_rhof * Lc^p_z
+! 	   do ki = 1,int(initClearcut(i,5)+1)
+! 	    multiOut(i,int(ij-initClearcut(i,5)+ki-1),7,ijj,1) = ki !#!#
+! 	   enddo !ki
+! 	   call initBiomasses(pCrobas(:,species),initVar(i,:,ijj),multiOut(i,ij,3,ijj,1),multiOut(i,(ij-1),:,ijj,1))
+! 	  endif
+! 	 enddo !ijj
+! 	endif
 
 	do jj = 1, nThinning(i)
 	 if(thinning(i,jj,1) == ij) then
@@ -277,14 +277,14 @@ endif
 ! write(1,*) thinningX
 ! endif
 
-	if(ij>1) then
-		if(oldLayer==1) output(1,3,:,:) = multiOut(i,(ij-1),3,:,:)
-		output(1,1:7,1:nLayers(i),:) = multiOut(i,(ij-1),1:7,1:nLayers(i),:)
-		output(1,9:nVar,1:nLayers(i),:) = multiOut(i,(ij-1),9:nVar,1:nLayers(i),:)
-	else
-		output(1,:,:,1) = multiOut(i,1,:,:,1)
-		output(1,3:nVar,:,2) = multiOut(i,1,3:nVar,:,2)
-	endif
+	! if(ij>1) then
+	! 	if(oldLayer==1) output(1,3,:,:) = multiOut(i,(ij-1),3,:,:)
+	! 	output(1,1:7,1:nLayers(i),:) = multiOut(i,(ij-1),1:7,1:nLayers(i),:)
+	! 	output(1,9:nVar,1:nLayers(i),:) = multiOut(i,(ij-1),9:nVar,1:nLayers(i),:)
+	! else
+	! 	output(1,:,:,1) = multiOut(i,1,:,:,1)
+	! 	output(1,3:nVar,:,2) = multiOut(i,1,3:nVar,:,2)
+	! endif
  	! if(siteInfo(i,1)==411310.) write(1,*) ij,output(1,11,1:nLayers(i),1)
 	! if(siteInfo(i,1)==35.) write(2,*) ij,output(1,11,1:nLayers(i),1)
 
