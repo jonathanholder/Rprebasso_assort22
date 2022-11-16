@@ -109,21 +109,21 @@ mkta = 5
 
 !!!!initialize run
 ! multiOut = 0.
-yearXrepl = 0.
-soilC = soilCinOut
-soilCtot = soilCtotInOut
-multiWood = 0.
-cuttingArea(:,2) = 0.
-cuttingArea(:,4) = 0.
-cuttingArea(:,6) = 0.
-cuttingArea(:,7) = 0. !jhup
-cuttingArea(:,8) = 0.
-cuttingArea(:,9) = 0.
-thinFact = compHarv(2)
-tTapioX = tTapio
-ftTapioX = ftTapio
-multiOut(:,1,7,:,1) = initVar(:,2,:) !initialize age used in the mitigation scenario to select the sites to harvest
-multiOut(:,1,4,:,1) = initVar(:,1,:) !initialize species
+! yearXrepl = 0.
+! soilC = soilCinOut
+! soilCtot = soilCtotInOut
+! multiWood = 0.
+! cuttingArea(:,2) = 0.
+! cuttingArea(:,4) = 0.
+! cuttingArea(:,6) = 0.
+! cuttingArea(:,7) = 0. !jhup
+! cuttingArea(:,8) = 0.
+! cuttingArea(:,9) = 0.
+! thinFact = compHarv(2)
+! tTapioX = tTapio
+! ftTapioX = ftTapio
+! multiOut(:,1,7,:,1) = initVar(:,2,:) !initialize age used in the mitigation scenario to select the sites to harvest
+! multiOut(:,1,4,:,1) = initVar(:,1,:) !initialize species
 
     ! open(1,file="test1.txt")
     ! open(2,file="test2.txt")
@@ -266,13 +266,13 @@ multiOut(:,1,4,:,1) = initVar(:,1,:) !initialize species
 ! 	 enddo !ijj
 ! 	endif
 
-	do jj = 1, nThinning(i)
-	 if(thinning(i,jj,1) == ij) then
-	  az = az + 1
-	  thinningX(az,:) = thinning(i,jj,:)
-	  thinningX(az,1) = 1.
-	 endif
-	enddo
+	! do jj = 1, nThinning(i)
+	!  if(thinning(i,jj,1) == ij) then
+	!   az = az + 1
+	!   thinningX(az,:) = thinning(i,jj,:)
+	!   thinningX(az,1) = 1.
+	!  endif
+	! enddo
 ! if(i==8 & ij==13) then
 ! write(1,*) thinningX
 ! endif
@@ -289,8 +289,8 @@ multiOut(:,1,4,:,1) = initVar(:,1,:) !initialize species
 	! if(siteInfo(i,1)==35.) write(2,*) ij,output(1,11,1:nLayers(i),1)
 
  !!!##set mortality model for managed and unmanaged forests
-	mortModX = mortMod(1) !!mortality model to be used in the managed forests
-	if(ClCut(i) < 0.5 .and. defaultThin(i) < 0.5) mortModX = mortMod(2) !!mortality model to be used in the unmanaged forests
+	! mortModX = mortMod(1) !!mortality model to be used in the managed forests
+	! if(ClCut(i) < 0.5 .and. defaultThin(i) < 0.5) mortModX = mortMod(2) !!mortality model to be used in the unmanaged forests
 
 	! if(ij>11) then
 		! open(2,file="test2.txt")
@@ -314,13 +314,13 @@ multiOut(:,1,4,:,1) = initVar(:,1,:) !initialize species
 		! open(2,file="test2.txt")
 		! write(2,*) ij,i,iz, "after run"
 		! close(2)
-	! endif
-	if(oldLayer==1 .and. output(1,3,nLayers(i),2)>0.) then
-	 	 multiOut(i,ij:maxYears,3,nLayers(i),1) = output(1,3,nLayers(i),1)
-		 multiOut(i,ij:maxYears,3,nLayers(i),2) = output(1,3,nLayers(i),2)
-	endif
-!
-!
+! 	! endif
+! 	if(oldLayer==1 .and. output(1,3,nLayers(i),2)>0.) then
+! 	 	 multiOut(i,ij:maxYears,3,nLayers(i),1) = output(1,3,nLayers(i),1)
+! 		 multiOut(i,ij:maxYears,3,nLayers(i),2) = output(1,3,nLayers(i),2)
+! 	endif
+! !
+! !
 ! 	!!!if fertilization at thinning is active,  increase siteType
 ! 	if(flagFert(i)==0 .and. fertThin>0 .and. siteInfo(i,3)>3. .and. siteInfo(i,3)<6.) then
 !
