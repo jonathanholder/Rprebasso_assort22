@@ -941,7 +941,7 @@ mkta = 5
 
 if (assortType==3) then
 
- !include 'assort_potential.h'
+ include 'assort_potential.h'
 
 endif !assorttype==3
 !/jh
@@ -981,7 +981,7 @@ endif !assorttype==3
   !jh ASSORTMENTS: thinnings
 
   ! ASSORTMENT CALCULATIONS
-  !include 'assort_thin.h'
+  include 'assort_thin.h'
   energyWood(year,ij,15) = 1014 !marker for (approximate) line for troubleshooting (formerly 1108)
 !/jh END ASSORTMENTS: thinnings
 
@@ -1081,7 +1081,7 @@ Wdb = max(Wdb * N/Nold,0.)
 
 !jh ASSORTMENTS: thinnings
 
-!include 'assort_thin.h'
+include 'assort_thin.h'
 energyWood(year,ij,15) = 1127 !marker for (approximate) line for troubleshooting; formerly 1219
 !/jh
 
@@ -1225,7 +1225,7 @@ if (ClCut == 1.) then
 
 !jh ASSORTMENTS: CLEAR CUTS (oldLayer=T)
 
-!include 'assort_cc.h'
+include 'assort_cc.h'
 energyWood(year,ij,15) = 1278! formerly 1391
   !energyCut
     stand_all(2,ij) = 0. !!newX
@@ -1271,7 +1271,7 @@ energyWood(year,ij,15) = 1278! formerly 1391
 
   !jh ASSORTMENTS: CLEAR CUTS (oldLayer=F)
 
-!include 'assort_cc.h'
+include 'assort_cc.h'
 energyWood(year,ij,15) = 1299! formerly 1431
 !/jh
 !energyCut
@@ -1539,7 +1539,7 @@ if(defaultThin == 1.) then
 
 !jh ASSORTMENTS: thinnings
 
-!include 'assort_thin.h'
+include 'assort_thin.h'
 energyWood(year,ij,15) = 1617 ! formerly 1570
 ! end assortments (thin)
 

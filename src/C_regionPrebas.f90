@@ -523,7 +523,7 @@ multiOut(siteX,ij,2,1,2) = 2. !!!flag for clearcut compensation !jhup remove
           ! endif ! energycutx
 
 
-!include 'assort_cc_comp.h'
+include 'assort_cc_comp.h'
 
 !jh end harvest comp cc
     !----- multiOut(siteX,ij,38,ijj,1) = sum(multiOut(siteX,1:ij,30,ijj,2)) + &
@@ -646,7 +646,7 @@ cuttingArea(ij,9) = cuttingArea(ij,9) + areas(siteX) ! accumulate thinning area 
 !############################################
 
 
-!include 'assort_thin_comp.h'
+include 'assort_thin_comp.h'
 
 
   !########################################
