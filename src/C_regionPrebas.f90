@@ -319,597 +319,574 @@ endif
 	 	 multiOut(i,ij:maxYears,3,nLayers(i),1) = output(1,3,nLayers(i),1)
 		 multiOut(i,ij:maxYears,3,nLayers(i),2) = output(1,3,nLayers(i),2)
 	endif
-
-
-	!!!if fertilization at thinning is active,  increase siteType
-	if(flagFert(i)==0 .and. fertThin>0 .and. siteInfo(i,3)>3. .and. siteInfo(i,3)<6.) then
-
-		yearsFert = max(1,min(((nYears(i)) - ij-1),nYearsFert))
-		multiOut(i,(ij+1):(ij+yearsFert),3,:,1) = max(1.,siteInfo(i,3)-1.)
-		call calcAlfar(multiOut(i,ij,3,1:nLayers(i),:),initVar(i,1,1:nLayers(i)),pCrobas, &
-				nLayers(i),alfarFert,allSP,nYearsFert,npar)
-		multiOut(i,(ij+1):(ij+yearsFert),3,:,2) = alfarFert(1:yearsFert,:)
-		flagFert(i)=2
-	endif
-
-	! if clearcut occur initialize initVar and age
-!!calculate year of replanting after a clearcut
-!if scenario = "oldLayer" do not consider the old layer
-if(oldLayer==1) then
- jj=max((nLayers(i)-1),1)
-else
- jj=nLayers(i)
-endif
-	if(sum(output(1,11,1:jj,1))==0 .and. yearXrepl(i) == 0.) then
-	 if((maxYears-ij)<10) then
- 		Ainit = nint(6 + 2*siteInfo(i,3) - 0.005*ETSy(climID,ij) + 2.25 + 2.0) !! + 2.0 to account for the delay between planting and clearcut
-	 else
- 		Ainit = nint(6 + 2*siteInfo(i,3) - 0.005*(sum(ETSy(climID,(ij+1):(ij+10)))/10) + 2.25 + 2.0) !! + 2.0 to account for the delay between planting and clearcut
-	 endif
-	 !!!!update area of cuttings
-	 cuttingArea(ij,2) = cuttingArea(ij,2) + areas(i) !calculate the clearcut area
-	 yearXrepl(i) = Ainit + ij + 1.
-	 initClearcut(i,5) = Ainit
-	 if(ij==1) then
-	  relBA(i,1:jj) = initVar(i,5,1:jj)/sum(initVar(i,5,1:jj))
-	 endif
-	endif
-
-	multiWood(i,ij,1:nLayers(i),:) = wood(1,1:nLayers(i),:)
-	multiOut(i,ij,1:2,1:nLayers(i),:) = output(1,1:2,1:nLayers(i),:)
-	multiOut(i,ij,4:7,1:nLayers(i),:) = output(1,4:7,1:nLayers(i),:)
-	multiOut(i,ij,9:nVar,1:nLayers(i),:) = output(1,9:nVar,1:nLayers(i),:)
-
-  if(multiWood(i,ij,1,14) == 1.) then !jhupx
-    cuttingArea(ij,4) = cuttingArea(ij,4) + areas(i)
-  endif
-  if(multiWood(i,ij,1,14) == 2.) then !jhupx
-    cuttingArea(ij,6) = cuttingArea(ij,6) + areas(i)
-  endif
-  if(multiWood(i,ij,1,14) == 3.) then !jhupx
-    cuttingArea(ij,7) = cuttingArea(ij,7) + areas(i)
-  endif
-
-	initVar(i,1,1:nLayers(i)) = output(1,4,1:nLayers(i),1)
-	initVar(i,2,1:nLayers(i)) = output(1,7,1:nLayers(i),1)
-	initVar(i,3:6,1:nLayers(i)) = output(1,11:14,1:nLayers(i),1)
-	initVar(i,7,1:nLayers(i)) = output(1,16,1:nLayers(i),1)
-	! initVar(i,8,1:nLayers(i)) = output(1,2,1:nLayers(i),1)  !!newX
-  if(isnan(sum(output(1,37,1:nLayers(i),1)))) then
-    roundWood = roundWood
-    energyWood(:) = energyWood(:)
-  else
-    roundWood = roundWood + sum(output(1,37,1:nLayers(i),1))* areas(i)
-    energyWood(1) = energyWood(1) + sum(wood(1,1:nLayers(i),7))* areas(i) !jhup energywood from roundwood
-    energyWood(2) = energyWood(2) + sum(wood(1,1:nLayers(i),6))* areas(i) !jhup energywood total
-
-  endif
- end do !iz i site loop
-
- !!! check if the harvest limit of the area has been reached otherwise clearcut the stands sorted by DBH
- !or thin based on stand density index
-if(roundWood < HarvLim(ij,1) .and. compHarv(1)>0.5) then
-! if(.false.) then
- if(compHarv(1)==1.) then  !!!!clearcut to compensate harvest limits
-  n = 0
-  do while(n < nSites .and. roundWood < HarvLim(ij,1))    !!energCuts
-   n = n + 1
-   !!!search for site with highest DBH
-   do i = 1, nSites
-if(oldLayer==1) then
- jj=max((nLayers(i)-1),1)
-else
- jj=nLayers(i)
-endif
-  if(ClCut(i) > 0. ) then
-   maxState(i) = maxval(multiOut(i,ij,12,1:jj,1))!!!search for site with highest DBH
-  else
-   maxState(i) = 0.
-  endif
-   enddo ! i
-   ops = maxloc(maxState)
-   siteX = int(ops(1))
-   climID = int(siteInfo(siteX,2))
-  if(maxState(siteX)>minDharv .and. ClCut(siteX) > 0.) then
-     energyCutX = energyCuts(siteX)
-   if (HarvLim(ij,2) > 0. .and.  energyWood(1) >= HarvLim(ij,2)) then    !!energCuts
-    energyCutX = 0.
-   endif
-
-   !if fertilization at thinning is active reset flagFert
-   if(fertThin > 0) then
-    flagFert(siteX) = 0
-   endif
-
-!!if oldLayer scenario -> populate old layer with the dominant species and clearcut other layers
-if(oldLayer==1) then
- jj=max((nLayers(siteX)-1),1)
- domSp = maxloc(multiOut(siteX,ij,13,1:jj,1))
- layerX = int(domSp(1))
-
-  !!!!calculate percentage of trees remaining after clearcut(pDomRem)
-  call random_number(randX)
-   pDomRem =   (randX*5.+5.)/100.* &  !!randomly sample between 5 and 10 %
-      sum(multiOut(siteX,ij,13,1:jj,1))/multiOut(siteX,ij,13,layerX,1)
-
-  !update old layer
-  multiOut(siteX,ij,:,nLayers(siteX),1) = multiOut(siteX,ij,:,layerX,1)
-  multiOut(siteX,ij,42,nLayers(siteX),1) = 0.
-  ! multiOut(siteX,ij,3,nLayers(siteX),2) = multiOut(siteX,ij,3,layerX,2)
-  multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),nLayers(siteX),1) = &
-   multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),layerX,1) * (pDomRem)
-  multiOut(siteX,ij,24:34,nLayers(siteX),1) = multiOut(siteX,ij,24:34,layerX,1) * (pDomRem)
-  multiOut(siteX,ij,47:51,nLayers(siteX),1) = multiOut(siteX,ij,47:51,layerX,1) * (pDomRem)
-    !!!if oldLayer is active import siteType and alfar from the single site simulations simulations
-  multiOut(siteX,ij:maxYears,3,nLayers(siteX),1) = multiOut(siteX,ij,3,layerX,1)
-  multiOut(siteX,ij:maxYears,3,nLayers(siteX),2) = multiOut(siteX,ij,3,layerX,2)
-  !update dominant layer
-  multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),layerX,1) = &
-    multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),layerX,1) * (1-pDomRem)
-  multiOut(siteX,ij,24:34,layerX,1) = multiOut(siteX,ij,24:34,layerX,1) * (1-pDomRem)
-  multiOut(siteX,ij,47:51,layerX,1) = multiOut(siteX,ij,47:51,layerX,1) * (1-pDomRem)
-
-else
- jj=nLayers(siteX)
-endif
-
-! HARVESTS: COMPENSATION CLEARCUTS
-
-cuttingArea(ij,2) = cuttingArea(ij,2) + areas(siteX) !calculate the clearcut area
-cuttingArea(ij,8) = cuttingArea(ij,8) + areas(siteX) !calculate the clearcut area
-multiOut(siteX,ij,2,1,2) = 2. !!!flag for clearcut compensation !jhup remove
-
-
-! HARVEST: compensation clearcut by layer
-     do ijj = 1, jj !jh add ccc by layer
-    !    !jh all moved to assort-cc_comp.h
-    !    multiOut(siteX,ij,6:23,ijj,2) = multiOut(siteX,ij,6:23,ijj,1)
-    !    multiOut(siteX,ij,26,ijj,1) = multiOut(siteX,ij,33,ijj,1) + multiOut(siteX,ij,26,ijj,1)
-    !    multiOut(siteX,ij,27,ijj,1) = multiOut(siteX,ij,25,ijj,1) + multiOut(siteX,ij,27,ijj,1)
-    ! !   multiOut(siteX,ij,28:29,ijj,2) = multiOut(siteX,ij,28:29,ijj,1) litter/turnover fwoody and cwoody, are changed in assortment procedure
-    !   multiOut(siteX,ij,28:29,ijj,2) = multiOut(siteX,ij,28:29,ijj,1)!
-    !   ! multiOut(siteX,ij,35:nVar,ijj,2) = multiOut(siteX,ij,35:nVar,ijj,1)!!jh ATTENTION: might hamper assortment proc; now happens in
-
-
-!       !update biomasses and Volumes
-!       multiOut(siteX,ij,24:25,ijj,2) = multiOut(siteX,ij,24:25,ijj,1) + &
-!             multiOut(siteX,ij,24:25,ijj,2)
-!       multiOut(siteX,ij,30:34,ijj,2) = multiOut(siteX,ij,30:34,ijj,1) + &
-!             multiOut(siteX,ij,30:34,ijj,2)
 !
-! !jh keep original roundwood processing if assortments are not switched on
-! if (assorttype==1) then
-!   !additional clearcuts: simple 'assortments'
-!      roundWood = roundWood + sum(multiOut(siteX,ij,30,1:jj,1)*harvRatio)*areas(siteX) !!energCuts
-!      !multiOut(siteX,ij,37,:,1) =  multiOut(siteX,ij,37,:,1) +  multiOut(siteX,ij,30,1:jj,1) !exclude 'regular' ,37 and see if this works (at least for the comp ccs themselves)
-!       multiOut(siteX,ij,37,:,1) = multiOut(siteX,ij,37,1:jj,1) + & !potential pre-add harvest vharvested from 'regular' thinning
-!        multiOut(siteX,ij,30,1:jj,1)*harvRatio !new, additional harvests
-!     ! multiOut(siteX,ij,38,:,1) = multiOut(siteX,ij,38,1:jj,1) + &
-!       !multiOut(siteX,ij,31,1:jj,1)*harvRatio
-!       multiOut(siteX,ij,38,:,1) = harvRatio !jh trsh
 !
-!             ! multiOut(siteX,ij,6:23,ijj,2) = multiOut(siteX,ij,6:23,ijj,1)!
-!             ! multiOut(siteX,ij,26,ijj,1) = multiOut(siteX,ij,33,ijj,1) + multiOut(siteX,ij,26,ijj,1)!
-!             ! multiOut(siteX,ij,27,ijj,1) = multiOut(siteX,ij,25,ijj,1) + multiOut(siteX,ij,27,ijj,1)!
-!             ! multiOut(siteX,ij,28:29,ijj,2) = multiOut(siteX,ij,28:29,ijj,1)!
-!             multiOut(siteX,ij,35:nVar,ijj,2) = multiOut(siteX,ij,35:nVar,ijj,1)
-!           !update biomasses and Volumes
-!           ! multiOut(siteX,ij,24:25,ijj,2) = multiOut(siteX,ij,24:25,ijj,1) + &
-!           !       multiOut(siteX,ij,24:25,ijj,2)
-!           ! multiOut(siteX,ij,30:34,ijj,2) = multiOut(siteX,ij,30:34,ijj,1) + &
-!           !       multiOut(siteX,ij,30:34,ijj,2)
+! 	!!!if fertilization at thinning is active,  increase siteType
+! 	if(flagFert(i)==0 .and. fertThin>0 .and. siteInfo(i,3)>3. .and. siteInfo(i,3)<6.) then
 !
-!           !multiOut(siteX,ij,37,ijj,1) = multiOut(siteX,ij,37,ijj,1) + multiOut(siteX,ij,30,ijj,2)*harvRatio
+! 		yearsFert = max(1,min(((nYears(i)) - ij-1),nYearsFert))
+! 		multiOut(i,(ij+1):(ij+yearsFert),3,:,1) = max(1.,siteInfo(i,3)-1.)
+! 		call calcAlfar(multiOut(i,ij,3,1:nLayers(i),:),initVar(i,1,1:nLayers(i)),pCrobas, &
+! 				nLayers(i),alfarFert,allSP,nYearsFert,npar)
+! 		multiOut(i,(ij+1):(ij+yearsFert),3,:,2) = alfarFert(1:yearsFert,:)
+! 		flagFert(i)=2
+! 	endif
 !
-          !
-          !   if(energyCutX == 1.) then !energywood harvests
-          !  multiWood(siteX,ij,ijj,2) = multiWood(siteX,ij,ijj,2) + (multiOut(siteX,ij,24,ijj,1) + &
-          !   multiOut(siteX,ij,32,ijj,1)*0.3 + multiOut(siteX,ij,31,ijj,1)* (1-harvRatio)) * energyRatio
-          !  species = int(multiOut(siteX,ij,4,ijj,1))
-          !  multiWood(siteX,ij,ijj,1) = multiWood(siteX,ij,ijj,2) / pCrobas(2,species)
-          !  energyWood = energyWood + multiWood(siteX,ij,ijj,1) * areas(siteX)   !!energCuts !!!we are looking at volumes
-          !  multiOut(siteX,ij,28,ijj,1) = max(0.,((multiOut(siteX,ij,24,ijj,1)*(1-energyRatio) +   &
-          !   multiOut(siteX,ij,51,ijj,1) + multiOut(siteX,ij,28,ijj,1)) + &
-          !  multiOut(siteX,ij,31,ijj,1)* (1-harvRatio) * (1-energyRatio) + &
-          !  (0.3 * (1-energyRatio)+0.7) * multiOut(siteX,ij,32,ijj,1) *0.83 ))
-          !    multiOut(siteX,ij,29,ijj,1) = (0.3 * (1-energyRatio)+0.7) * multiOut(siteX,ij,32,ijj,1) *0.17 + &
-          !   multiOut(siteX,ij,29,ijj,1)
-          !
-          ! else !no energywood harvest
-          !  multiOut(siteX,ij,28,ijj,1) = max(0.,(multiOut(siteX,ij,24,ijj,1) + multiOut(siteX,ij,28,ijj,1) + &
-          ! multiOut(siteX,ij,51,ijj,1) + multiOut(siteX,ij,32,ijj,1)*0.83 + &
-          ! multiOut(siteX,ij,31,ijj,1)* (1-harvRatio)))
-          !    multiOut(siteX,ij,29,ijj,1)=multiOut(siteX,ij,32,ijj,1)*0.17+multiOut(siteX,ij,29,ijj,1) !0.1 takes into account of the stem residuals after clearcuts
-          ! endif ! energycutx
-
-
-include 'assort_cc_comp.h'
-
-!jh end harvest comp cc
-    !----- multiOut(siteX,ij,38,ijj,1) = sum(multiOut(siteX,1:ij,30,ijj,2)) + &
-    !----- sum(multiOut(siteX,1:ij,42,ijj,1)) + multiOut(siteX,ij,30,ijj,1)
-
-
-  enddo !ijj/layer for comp ccs
-
-
-
-   if((maxYears-ij)<10) then
-    Ainit = nint(6 + 2*siteInfo(siteX,3) - 0.005*ETSy(climID,ij) + 2.25 + 2.)
-   else
-    Ainit = nint(6 + 2*siteInfo(siteX,3) - 0.005*(sum(ETSy(climID,(ij+1):(ij+10)))/10) + 2.25 + 2.)
-   endif
-   yearXrepl(siteX) = Ainit + ij + 1.
-   initClearcut(siteX,5) = Ainit
-   if(ij==1) then
-    relBA(siteX,1:jj) = initVar(siteX,5,1:jj)/ &
-    sum(initVar(siteX,5,1:jj))
-   else
-    relBA(siteX,1:jj) = multiOut(siteX,(ij-1),13,1:jj,1)/ &
-    sum(multiOut(siteX,(ij-1),13,1:jj,1))
-   endif
-
-    !initVar(siteX,1,1:nLayers(siteX)) = 0. !output(1,4,:,1)
-      initVar(siteX,1,1:nLayers(siteX)) = multiOut(siteX,ij,4,1:nLayers(siteX),1)
-   initVar(siteX,2,1:nLayers(siteX)) = multiOut(siteX,ij,7,1:nLayers(siteX),1)
-   initVar(siteX,3:6,1:nLayers(siteX)) = multiOut(siteX,ij,11:14,1:nLayers(siteX),1)
-   initVar(siteX,7,1:nLayers(siteX)) = multiOut(siteX,ij,16,1:nLayers(siteX),1)
-     initVar(siteX,2,1:jj) = 0.!output(1,7,:,1)
-     initVar(siteX,3:7,1:jj) = 0.!output(1,11:14,:,1)  !!newX
-    endif !(maxState(i)>minDharv)
-   enddo !end do while
-
- elseif(compHarv(1)==2.) then  !!!thin to compansate harvest limits
-   !Perform thinning to compensate harvest levels
-   !calculate SDI
-  do i = 1, nSites
-!!start!! use stand volume to order the forests
-if(oldLayer==1) then
- jj=max((nLayers(i)-1),1)
-else
- jj=nLayers(i)
-endif
-
- domSp = maxloc(multiOut(i,ij,13,1:jj,1))
- layerX = int(domSp(1))
-
-	if(ClCut(i) > 0. .and. multiOut(i,ij,7,layerX,1) > 50. .and. multiOut(i,ij,7,layerX,1) < 100.) then
-	 maxState(i) = sum(multiOut(i,ij,30,1:jj,1))!!!search for site with highest volume
-	! if(ClCut(i) > 0.) then
-	  ! maxState(i) = sum(multiOut(i,ij,17,1:jj,1))*(sqrt(sum(multiOut(i,ij,13,1:jj,1))/ &  !!!use SDI
-				! sum(multiOut(i,ij,30,1:jj,1))*4/pi)*100./25.)**(1.66)
-	else
-	 maxState(i) = 0.
-	endif
-!!end!! use stand volume to order the forests
-  enddo
-  n = 0
-  do while(n < nSites .and. roundWood < HarvLim(ij,1))    !!energCuts
-   n = n + 1
-   ops = maxloc(maxState)
-   siteX = int(ops(1))
-	if(maxState(siteX)>0. .and. ClCut(siteX) > 0.) then
-     energyCutX = energyCuts(siteX)
-   if (HarvLim(ij,2) > 0. .and.  energyWood(1) >= HarvLim(ij,2)) then    !!energCuts
-    energyCutX = 0.
-   endif
-
-   !!!harvest thinFact
-if(oldLayer==1) then
- jj=max((nLayers(siteX)-1),1)
-else
- jj=nLayers(siteX)
-endif
-
-! if(siteInfo(siteX,1) == 454702.) write(2,*) "remaining 1", ij, multiOut(siteX,ij,11,1,1), multiOut(siteX,ij,13,1,1),&
-  ! multiOut(siteX,ij,37,1,1)
-! if(siteInfo(siteX,1) == 454702.) write(2,*) "remaining 2", multiOut(siteX,ij,11,2,1), multiOut(siteX,ij,13,2,1), &
-  ! multiOut(siteX,ij,37,2,1)
-! if(siteInfo(siteX,1) == 454702.) write(2,*) "remaining 3", multiOut(siteX,ij,11,3,1), multiOut(siteX,ij,13,3,1), &
-  ! multiOut(siteX,ij,37,3,1)
-
-
-! HARVESTS: COMPENSATION THINNINGS !jhup
-! old flag indicator (to be removed along 'harvested' dimension)
-multiOut(siteX,ij,1,1,2) = multiOut(siteX,ij,1,1,2) + 0.2 !!!flag for thinning compensation // !jhup: remove
-cuttingArea(ij,7) = cuttingArea(ij,7) + areas(siteX) ! accumulate thinning area for thinning type 3 (total)
-cuttingArea(ij,9) = cuttingArea(ij,9) + areas(siteX) ! accumulate thinning area for thinning type 3 (comp thin only)
-
-   do ijj = 1, jj
-     !jh below moved behind assortment implementation, as this merges the additional  and the potential regular removals
-     !jh for the assortments, the additional rems are needed separately...
-    !   multiOut(siteX,ij,9:10,ijj,2) = multiOut(siteX,ij,9:10,ijj,1) * thinFact
-    ! multiOut(siteX,ij,11:12,ijj,2) = multiOut(siteX,ij,11:12,ijj,1)
-    ! multiOut(siteX,ij,13,ijj,2) = multiOut(siteX,ij,13,ijj,1) * thinFact
-    ! multiOut(siteX,ij,14:16,ijj,2) = multiOut(siteX,ij,14:16,ijj,1)
-    ! multiOut(siteX,ij,17:23,ijj,2) = multiOut(siteX,ij,17:23,ijj,1) * thinFact
-    ! multiOut(siteX,ij,26:29,ijj,2) = multiOut(siteX,ij,26:29,ijj,1) * thinFact
-    !
-    ! ! if(siteInfo(siteX,1) == 454702.) write(2,*) "thinned x", multiOut(siteX,ij,11,ijj,2), multiOut(siteX,ij,13,ijj,2), &
-    ! ! multiOut(siteX,ij,30,ijj,2)
-    !
-    ! !update biomasses and Volumes
-    ! multiOut(siteX,ij,24:25,ijj,2) = multiOut(siteX,ij,24:25,ijj,1) * thinFact + &
-    !       multiOut(siteX,ij,24:25,ijj,2)
-    ! multiOut(siteX,ij,30:34,ijj,2) = multiOut(siteX,ij,30:34,ijj,1) * thinFact + &
-    !       multiOut(siteX,ij,30:34,ijj,2)
-    !
-    ! multiOut(siteX,ij,35,ijj,2) = multiOut(siteX,ij,35,ijj,1)
-    ! multiOut(siteX,ij,44,ijj,2) = multiOut(siteX,ij,44,ijj,1) * thinFact
-    !
-    ! ! Litter foliage and branches (fol and froots!?)
-    ! multiOut(siteX,ij,26,ijj,1) = multiOut(siteX,ij,33,ijj,1) * thinFact + multiOut(siteX,ij,26,ijj,1)
-    !   multiOut(siteX,ij,27,ijj,1) = multiOut(siteX,ij,25,ijj,1) * thinFact + multiOut(siteX,ij,27,ijj,1)
-!/jh outcommented
-
-! // END core prebas thinnings
-!############################################
-
-
-include 'assort_thin_comp.h'
-
-
-  !########################################
-
-  !endif! assortmentswitch
+! 	! if clearcut occur initialize initVar and age
+! !!calculate year of replanting after a clearcut
+! !if scenario = "oldLayer" do not consider the old layer
+! if(oldLayer==1) then
+!  jj=max((nLayers(i)-1),1)
+! else
+!  jj=nLayers(i)
+! endif
+! 	if(sum(output(1,11,1:jj,1))==0 .and. yearXrepl(i) == 0.) then
+! 	 if((maxYears-ij)<10) then
+!  		Ainit = nint(6 + 2*siteInfo(i,3) - 0.005*ETSy(climID,ij) + 2.25 + 2.0) !! + 2.0 to account for the delay between planting and clearcut
+! 	 else
+!  		Ainit = nint(6 + 2*siteInfo(i,3) - 0.005*(sum(ETSy(climID,(ij+1):(ij+10)))/10) + 2.25 + 2.0) !! + 2.0 to account for the delay between planting and clearcut
+! 	 endif
+! 	 !!!!update area of cuttings
+! 	 cuttingArea(ij,2) = cuttingArea(ij,2) + areas(i) !calculate the clearcut area
+! 	 yearXrepl(i) = Ainit + ij + 1.
+! 	 initClearcut(i,5) = Ainit
+! 	 if(ij==1) then
+! 	  relBA(i,1:jj) = initVar(i,5,1:jj)/sum(initVar(i,5,1:jj))
+! 	 endif
+! 	endif
 !
-! !jh [relocated] updating harvested dimension; to be removed
+! 	multiWood(i,ij,1:nLayers(i),:) = wood(1,1:nLayers(i),:)
+! 	multiOut(i,ij,1:2,1:nLayers(i),:) = output(1,1:2,1:nLayers(i),:)
+! 	multiOut(i,ij,4:7,1:nLayers(i),:) = output(1,4:7,1:nLayers(i),:)
+! 	multiOut(i,ij,9:nVar,1:nLayers(i),:) = output(1,9:nVar,1:nLayers(i),:)
 !
-! multiOut(siteX,ij,9:10,ijj,2) = multiOut(siteX,ij,9:10,ijj,1) * thinFact
-! multiOut(siteX,ij,11:12,ijj,2) = multiOut(siteX,ij,11:12,ijj,1)
-! multiOut(siteX,ij,13,ijj,2) = multiOut(siteX,ij,13,ijj,1) * thinFact
-! multiOut(siteX,ij,14:16,ijj,2) = multiOut(siteX,ij,14:16,ijj,1)
-! multiOut(siteX,ij,17:23,ijj,2) = multiOut(siteX,ij,17:23,ijj,1) * thinFact
-! multiOut(siteX,ij,26:29,ijj,2) = multiOut(siteX,ij,26:29,ijj,1) * thinFact
+!   if(multiWood(i,ij,1,14) == 1.) then !jhupx
+!     cuttingArea(ij,4) = cuttingArea(ij,4) + areas(i)
+!   endif
+!   if(multiWood(i,ij,1,14) == 2.) then !jhupx
+!     cuttingArea(ij,6) = cuttingArea(ij,6) + areas(i)
+!   endif
+!   if(multiWood(i,ij,1,14) == 3.) then !jhupx
+!     cuttingArea(ij,7) = cuttingArea(ij,7) + areas(i)
+!   endif
 !
-! ! if(siteInfo(siteX,1) == 454702.) write(2,*) "thinned x", multiOut(siteX,ij,11,ijj,2), multiOut(siteX,ij,13,ijj,2), &
-! ! multiOut(siteX,ij,30,ijj,2)
+! 	initVar(i,1,1:nLayers(i)) = output(1,4,1:nLayers(i),1)
+! 	initVar(i,2,1:nLayers(i)) = output(1,7,1:nLayers(i),1)
+! 	initVar(i,3:6,1:nLayers(i)) = output(1,11:14,1:nLayers(i),1)
+! 	initVar(i,7,1:nLayers(i)) = output(1,16,1:nLayers(i),1)
+! 	! initVar(i,8,1:nLayers(i)) = output(1,2,1:nLayers(i),1)  !!newX
+!   if(isnan(sum(output(1,37,1:nLayers(i),1)))) then
+!     roundWood = roundWood
+!     energyWood(:) = energyWood(:)
+!   else
+!     roundWood = roundWood + sum(output(1,37,1:nLayers(i),1))* areas(i)
+!     energyWood(1) = energyWood(1) + sum(wood(1,1:nLayers(i),7))* areas(i) !jhup energywood from roundwood
+!     energyWood(2) = energyWood(2) + sum(wood(1,1:nLayers(i),6))* areas(i) !jhup energywood total
 !
-! !update biomasses and Volumes
-! multiOut(siteX,ij,24:25,ijj,2) = multiOut(siteX,ij,24:25,ijj,1) * thinFact + &
-!     multiOut(siteX,ij,24:25,ijj,2)
-! multiOut(siteX,ij,30:34,ijj,2) = multiOut(siteX,ij,30:34,ijj,1) * thinFact + &
-!     multiOut(siteX,ij,30:34,ijj,2)
+!   endif
+!  end do !iz i site loop
 !
-! multiOut(siteX,ij,35,ijj,2) = multiOut(siteX,ij,35,ijj,1)
-! multiOut(siteX,ij,44,ijj,2) = multiOut(siteX,ij,44,ijj,1) * thinFact
+!  !!! check if the harvest limit of the area has been reached otherwise clearcut the stands sorted by DBH
+!  !or thin based on stand density index
+! if(roundWood < HarvLim(ij,1) .and. compHarv(1)>0.5) then
+! ! if(.false.) then
+!  if(compHarv(1)==1.) then  !!!!clearcut to compensate harvest limits
+!   n = 0
+!   do while(n < nSites .and. roundWood < HarvLim(ij,1))    !!energCuts
+!    n = n + 1
+!    !!!search for site with highest DBH
+!    do i = 1, nSites
+! if(oldLayer==1) then
+!  jj=max((nLayers(i)-1),1)
+! else
+!  jj=nLayers(i)
+! endif
+!   if(ClCut(i) > 0. ) then
+!    maxState(i) = maxval(multiOut(i,ij,12,1:jj,1))!!!search for site with highest DBH
+!   else
+!    maxState(i) = 0.
+!   endif
+!    enddo ! i
+!    ops = maxloc(maxState)
+!    siteX = int(ops(1))
+!    climID = int(siteInfo(siteX,2))
+!   if(maxState(siteX)>minDharv .and. ClCut(siteX) > 0.) then
+!      energyCutX = energyCuts(siteX)
+!    if (HarvLim(ij,2) > 0. .and.  energyWood(1) >= HarvLim(ij,2)) then    !!energCuts
+!     energyCutX = 0.
+!    endif
 !
-! ! Litter foliage and branches (fol and froots!?)
-! multiOut(siteX,ij,26,ijj,1) = multiOut(siteX,ij,33,ijj,1) * thinFact + multiOut(siteX,ij,26,ijj,1)
-! multiOut(siteX,ij,27,ijj,1) = multiOut(siteX,ij,25,ijj,1) * thinFact + multiOut(siteX,ij,27,ijj,1)
-! !/jh end reloaction
+!    !if fertilization at thinning is active reset flagFert
+!    if(fertThin > 0) then
+!     flagFert(siteX) = 0
+!    endif
+!
+! !!if oldLayer scenario -> populate old layer with the dominant species and clearcut other layers
+! if(oldLayer==1) then
+!  jj=max((nLayers(siteX)-1),1)
+!  domSp = maxloc(multiOut(siteX,ij,13,1:jj,1))
+!  layerX = int(domSp(1))
+!
+!   !!!!calculate percentage of trees remaining after clearcut(pDomRem)
+!   call random_number(randX)
+!    pDomRem =   (randX*5.+5.)/100.* &  !!randomly sample between 5 and 10 %
+!       sum(multiOut(siteX,ij,13,1:jj,1))/multiOut(siteX,ij,13,layerX,1)
+!
+!   !update old layer
+!   multiOut(siteX,ij,:,nLayers(siteX),1) = multiOut(siteX,ij,:,layerX,1)
+!   multiOut(siteX,ij,42,nLayers(siteX),1) = 0.
+!   ! multiOut(siteX,ij,3,nLayers(siteX),2) = multiOut(siteX,ij,3,layerX,2)
+!   multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),nLayers(siteX),1) = &
+!    multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),layerX,1) * (pDomRem)
+!   multiOut(siteX,ij,24:34,nLayers(siteX),1) = multiOut(siteX,ij,24:34,layerX,1) * (pDomRem)
+!   multiOut(siteX,ij,47:51,nLayers(siteX),1) = multiOut(siteX,ij,47:51,layerX,1) * (pDomRem)
+!     !!!if oldLayer is active import siteType and alfar from the single site simulations simulations
+!   multiOut(siteX,ij:maxYears,3,nLayers(siteX),1) = multiOut(siteX,ij,3,layerX,1)
+!   multiOut(siteX,ij:maxYears,3,nLayers(siteX),2) = multiOut(siteX,ij,3,layerX,2)
+!   !update dominant layer
+!   multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),layerX,1) = &
+!     multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),layerX,1) * (1-pDomRem)
+!   multiOut(siteX,ij,24:34,layerX,1) = multiOut(siteX,ij,24:34,layerX,1) * (1-pDomRem)
+!   multiOut(siteX,ij,47:51,layerX,1) = multiOut(siteX,ij,47:51,layerX,1) * (1-pDomRem)
+!
+! else
+!  jj=nLayers(siteX)
+! endif
+!
+! ! HARVESTS: COMPENSATION CLEARCUTS
+!
+! cuttingArea(ij,2) = cuttingArea(ij,2) + areas(siteX) !calculate the clearcut area
+! cuttingArea(ij,8) = cuttingArea(ij,8) + areas(siteX) !calculate the clearcut area
+! multiOut(siteX,ij,2,1,2) = 2. !!!flag for clearcut compensation !jhup remove
+!
+!
+! ! HARVEST: compensation clearcut by layer
+!      do ijj = 1, jj !jh add ccc by layer
+!     !    !jh all moved to assort-cc_comp.h
+!     !    multiOut(siteX,ij,6:23,ijj,2) = multiOut(siteX,ij,6:23,ijj,1)
+!     !    multiOut(siteX,ij,26,ijj,1) = multiOut(siteX,ij,33,ijj,1) + multiOut(siteX,ij,26,ijj,1)
+!     !    multiOut(siteX,ij,27,ijj,1) = multiOut(siteX,ij,25,ijj,1) + multiOut(siteX,ij,27,ijj,1)
+!     ! !   multiOut(siteX,ij,28:29,ijj,2) = multiOut(siteX,ij,28:29,ijj,1) litter/turnover fwoody and cwoody, are changed in assortment procedure
+!     !   multiOut(siteX,ij,28:29,ijj,2) = multiOut(siteX,ij,28:29,ijj,1)!
+!     !   ! multiOut(siteX,ij,35:nVar,ijj,2) = multiOut(siteX,ij,35:nVar,ijj,1)!!jh ATTENTION: might hamper assortment proc; now happens in
+!
+!
+! !       !update biomasses and Volumes
+! !       multiOut(siteX,ij,24:25,ijj,2) = multiOut(siteX,ij,24:25,ijj,1) + &
+! !             multiOut(siteX,ij,24:25,ijj,2)
+! !       multiOut(siteX,ij,30:34,ijj,2) = multiOut(siteX,ij,30:34,ijj,1) + &
+! !             multiOut(siteX,ij,30:34,ijj,2)
+! !
+! ! !jh keep original roundwood processing if assortments are not switched on
+! ! if (assorttype==1) then
+! !   !additional clearcuts: simple 'assortments'
+! !      roundWood = roundWood + sum(multiOut(siteX,ij,30,1:jj,1)*harvRatio)*areas(siteX) !!energCuts
+! !      !multiOut(siteX,ij,37,:,1) =  multiOut(siteX,ij,37,:,1) +  multiOut(siteX,ij,30,1:jj,1) !exclude 'regular' ,37 and see if this works (at least for the comp ccs themselves)
+! !       multiOut(siteX,ij,37,:,1) = multiOut(siteX,ij,37,1:jj,1) + & !potential pre-add harvest vharvested from 'regular' thinning
+! !        multiOut(siteX,ij,30,1:jj,1)*harvRatio !new, additional harvests
+! !     ! multiOut(siteX,ij,38,:,1) = multiOut(siteX,ij,38,1:jj,1) + &
+! !       !multiOut(siteX,ij,31,1:jj,1)*harvRatio
+! !       multiOut(siteX,ij,38,:,1) = harvRatio !jh trsh
+! !
+! !             ! multiOut(siteX,ij,6:23,ijj,2) = multiOut(siteX,ij,6:23,ijj,1)!
+! !             ! multiOut(siteX,ij,26,ijj,1) = multiOut(siteX,ij,33,ijj,1) + multiOut(siteX,ij,26,ijj,1)!
+! !             ! multiOut(siteX,ij,27,ijj,1) = multiOut(siteX,ij,25,ijj,1) + multiOut(siteX,ij,27,ijj,1)!
+! !             ! multiOut(siteX,ij,28:29,ijj,2) = multiOut(siteX,ij,28:29,ijj,1)!
+! !             multiOut(siteX,ij,35:nVar,ijj,2) = multiOut(siteX,ij,35:nVar,ijj,1)
+! !           !update biomasses and Volumes
+! !           ! multiOut(siteX,ij,24:25,ijj,2) = multiOut(siteX,ij,24:25,ijj,1) + &
+! !           !       multiOut(siteX,ij,24:25,ijj,2)
+! !           ! multiOut(siteX,ij,30:34,ijj,2) = multiOut(siteX,ij,30:34,ijj,1) + &
+! !           !       multiOut(siteX,ij,30:34,ijj,2)
+! !
+! !           !multiOut(siteX,ij,37,ijj,1) = multiOut(siteX,ij,37,ijj,1) + multiOut(siteX,ij,30,ijj,2)*harvRatio
+! !
+!           !
+!           !   if(energyCutX == 1.) then !energywood harvests
+!           !  multiWood(siteX,ij,ijj,2) = multiWood(siteX,ij,ijj,2) + (multiOut(siteX,ij,24,ijj,1) + &
+!           !   multiOut(siteX,ij,32,ijj,1)*0.3 + multiOut(siteX,ij,31,ijj,1)* (1-harvRatio)) * energyRatio
+!           !  species = int(multiOut(siteX,ij,4,ijj,1))
+!           !  multiWood(siteX,ij,ijj,1) = multiWood(siteX,ij,ijj,2) / pCrobas(2,species)
+!           !  energyWood = energyWood + multiWood(siteX,ij,ijj,1) * areas(siteX)   !!energCuts !!!we are looking at volumes
+!           !  multiOut(siteX,ij,28,ijj,1) = max(0.,((multiOut(siteX,ij,24,ijj,1)*(1-energyRatio) +   &
+!           !   multiOut(siteX,ij,51,ijj,1) + multiOut(siteX,ij,28,ijj,1)) + &
+!           !  multiOut(siteX,ij,31,ijj,1)* (1-harvRatio) * (1-energyRatio) + &
+!           !  (0.3 * (1-energyRatio)+0.7) * multiOut(siteX,ij,32,ijj,1) *0.83 ))
+!           !    multiOut(siteX,ij,29,ijj,1) = (0.3 * (1-energyRatio)+0.7) * multiOut(siteX,ij,32,ijj,1) *0.17 + &
+!           !   multiOut(siteX,ij,29,ijj,1)
+!           !
+!           ! else !no energywood harvest
+!           !  multiOut(siteX,ij,28,ijj,1) = max(0.,(multiOut(siteX,ij,24,ijj,1) + multiOut(siteX,ij,28,ijj,1) + &
+!           ! multiOut(siteX,ij,51,ijj,1) + multiOut(siteX,ij,32,ijj,1)*0.83 + &
+!           ! multiOut(siteX,ij,31,ijj,1)* (1-harvRatio)))
+!           !    multiOut(siteX,ij,29,ijj,1)=multiOut(siteX,ij,32,ijj,1)*0.17+multiOut(siteX,ij,29,ijj,1) !0.1 takes into account of the stem residuals after clearcuts
+!           ! endif ! energycutx
+!
+!
+! include 'assort_cc_comp.h'
+!
+! !jh end harvest comp cc
+!     !----- multiOut(siteX,ij,38,ijj,1) = sum(multiOut(siteX,1:ij,30,ijj,2)) + &
+!     !----- sum(multiOut(siteX,1:ij,42,ijj,1)) + multiOut(siteX,ij,30,ijj,1)
+!
+!
+!   enddo !ijj/layer for comp ccs
 !
 !
 !
+!    if((maxYears-ij)<10) then
+!     Ainit = nint(6 + 2*siteInfo(siteX,3) - 0.005*ETSy(climID,ij) + 2.25 + 2.)
+!    else
+!     Ainit = nint(6 + 2*siteInfo(siteX,3) - 0.005*(sum(ETSy(climID,(ij+1):(ij+10)))/10) + 2.25 + 2.)
+!    endif
+!    yearXrepl(siteX) = Ainit + ij + 1.
+!    initClearcut(siteX,5) = Ainit
+!    if(ij==1) then
+!     relBA(siteX,1:jj) = initVar(siteX,5,1:jj)/ &
+!     sum(initVar(siteX,5,1:jj))
+!    else
+!     relBA(siteX,1:jj) = multiOut(siteX,(ij-1),13,1:jj,1)/ &
+!     sum(multiOut(siteX,(ij-1),13,1:jj,1))
+!    endif
 !
+!     !initVar(siteX,1,1:nLayers(siteX)) = 0. !output(1,4,:,1)
+!       initVar(siteX,1,1:nLayers(siteX)) = multiOut(siteX,ij,4,1:nLayers(siteX),1)
+!    initVar(siteX,2,1:nLayers(siteX)) = multiOut(siteX,ij,7,1:nLayers(siteX),1)
+!    initVar(siteX,3:6,1:nLayers(siteX)) = multiOut(siteX,ij,11:14,1:nLayers(siteX),1)
+!    initVar(siteX,7,1:nLayers(siteX)) = multiOut(siteX,ij,16,1:nLayers(siteX),1)
+!      initVar(siteX,2,1:jj) = 0.!output(1,7,:,1)
+!      initVar(siteX,3:7,1:jj) = 0.!output(1,11:14,:,1)  !!newX
+!     endif !(maxState(i)>minDharv)
+!    enddo !end do while
 !
-! !!end energCuts
-!     multiOut(siteX,ij,9:10,ijj,1) = multiOut(siteX,ij,9:10,ijj,1)*(1-thinFact)
-!     multiOut(siteX,ij,13,ijj,1) = multiOut(siteX,ij,13,ijj,1)*(1-thinFact)
-!     multiOut(siteX,ij,17:25,ijj,1) = multiOut(siteX,ij,17:25,ijj,1)*(1-thinFact)
-!     multiOut(siteX,ij,30:33,ijj,1) = multiOut(siteX,ij,30:33,ijj,1)*(1-thinFact)
-!     multiOut(siteX,ij,47:51,ijj,1) = multiOut(siteX,ij,47:51,ijj,1)*(1-thinFact)
-!     multiOut(siteX,ij,53:nVar,ijj,1) = multiOut(siteX,ij,53:nVar,ijj,1)*(1-thinFact)
-!
-!        initVar(siteX,1,ijj) = multiOut(siteX,ij,4,jj,1)
-!      initVar(siteX,2,ijj) = multiOut(siteX,ij,7,ijj,1)
-!     initVar(siteX,3:6,ijj) = multiOut(siteX,ij,11:14,ijj,1)
-!     initVar(siteX,7,ijj) = multiOut(siteX,ij,16,ijj,1)
-! ! if(siteInfo(siteX,1) == 454702.) write(2,*) "thinned", multiOut(siteX,ij,11,ijj,2), multiOut(siteX,ij,13,ijj,2)
-! ! if(siteInfo(siteX,1) == 454702.) write(2,*) "remaining", multiOut(siteX,ij,11,ijj,1), multiOut(siteX,ij,13,ijj,1)
-
-     enddo !ijj layers loop
-
-   !!!if fertilization at thinning is active,  decrease siteType
-   if(flagFert(siteX)==0 .and. fertThin>0 .and. siteInfo(siteX,3)>3. .and. siteInfo(siteX,3)<6.) then
- 		yearsFert = max(1,min(((nYears(siteX)) - ij-1),nYearsFert))
- 		multiOut(siteX,(ij+1):(ij+yearsFert),3,:,1) = max(1.,siteInfo(siteX,3)-1.)
- 		call calcAlfar(multiOut(siteX,ij,3,1:nLayers(siteX),:),initVar(siteX,1,1:nLayers(siteX)),pCrobas, &
- 				nLayers(siteX),alfarFert,allSP,nYearsFert,npar)
- 		multiOut(siteX,(ij+1):(ij+yearsFert),3,:,2) = alfarFert(1:yearsFert,:)
- 		flagFert(siteX)=2
- 	endif
-
-    endif !(maxState(i)>minDharv)
-    maxState(siteX)=0. !jhup added while troubleshooting compharv=3 (from 12/10/22 prebas version)
-   enddo !end do while
- elseif(compHarv(1)==3.) then  !!!thin to compensate harvest limits
-
-!############################################################
-!!############################################################
-!DEFUNCT VERSION, all the below replaced by older version (220815)
-
-   n = 0
-  do while((n < nSites .and. roundWood < HarvLim(ij,1)) .and. &
-  cuttingArea(ij,2) < cuttingArea(ij,1))
-   n = n + 1
-   do i = 1, nSites
-if(oldLayer==1) then
- jj=max((nLayers(i)-1),1)
-else
- jj=nLayers(i)
-endif
-  if(ClCut(i) > 0. ) then
-   maxState(i) = maxval(multiOut(i,ij,12,1:jj,1))!!!search for site with highest DBH
-  else
-   maxState(i) = 0.
-  endif
-   enddo ! i
-   ops = maxloc(maxState)
-   siteX = int(ops(1))
-   climID = int(siteInfo(siteX,2))
-
-  if(maxState(siteX)>minDharv .and. ClCut(siteX) > 0.) then
-     energyCutX = energyCuts(siteX)
-   if (HarvLim(ij,2) > 0. .and.  energyWood(1) >= HarvLim(ij,2)) then    !!energCuts
-    energyCutX = 0.
-   endif
-   !if fertilization at thinning is active reset flagFert
-   if(fertThin > 0) then
-    flagFert(siteX) = 0
-   endif
-
-!!if oldLayer scenario -> populate old layer with the dominant species and clearcut other layers
-if(oldLayer==1) then
- jj=max((nLayers(siteX)-1),1)
- ops = maxloc(multiOut(siteX,ij,13,1:jj,1))
- layerX = int(ops(1))
-
-  !!!!calculate percentage of trees remaining after clearcut(pDomRem)
-   call random_number(randX)
-   pDomRem =   (randX*5.+5.)/100.* &  !!randomly sample between 5 and 10 %
-   sum(multiOut(siteX,ij,13,1:jj,1))/multiOut(siteX,ij,13,layerX,1)
-
-
-  !update old layer
-  multiOut(siteX,ij,:,nLayers(i),1) = multiOut(siteX,ij,:,layerX,1)
-  multiOut(siteX,ij,42,nLayers(i),1) = 0.
-  multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),nLayers(i),1) = &
-   multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),layerX,1) * (pDomRem)
-  multiOut(siteX,ij,24:34,nLayers(i),1) = multiOut(siteX,ij,24:34,layerX,1) * (pDomRem)
-  multiOut(siteX,ij,47:51,nLayers(i),1) = multiOut(siteX,ij,47:51,layerX,1) * (pDomRem)
-    !!!if oldLayer is active import siteType and alfar from the single site simulations simulations
-  multiOut(siteX,ij:maxYears,3,nLayers(siteX),1) = multiOut(siteX,ij,3,layerX,1)
-  multiOut(siteX,ij:maxYears,3,nLayers(siteX),2) = multiOut(siteX,ij,3,layerX,2)
-  !update dominant layer
-  multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),layerX,1) = &
-    multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),layerX,1) * (1-pDomRem)
-  multiOut(siteX,ij,24:34,layerX,1) = multiOut(siteX,ij,24:34,layerX,1) * (1-pDomRem)
-  multiOut(siteX,ij,47:51,layerX,1) = multiOut(siteX,ij,47:51,layerX,1) * (1-pDomRem)
-else
- jj=nLayers(i)
-endif
-!!   !!clearcut!!
-   cuttingArea(ij,2) = cuttingArea(ij,2) + areas(siteX) !calculate the clearcut area
-     roundWood = roundWood + sum(multiOut(siteX,ij,30,1:jj,1)*harvRatio)*areas(siteX) !!energCuts!jh rem25
-     multiOut(siteX,ij,37,:,1) = multiOut(siteX,ij,37,1:jj,1) + &
-      multiOut(siteX,ij,30,1:jj,1)*harvRatio
-     multiOut(siteX,ij,38,:,1) = multiOut(siteX,ij,38,1:jj,1) + &
-      multiOut(siteX,ij,31,1:jj,1)*harvRatio
-   multiOut(siteX,ij,2,1,2) = 2. !!!flag for clearcut compensation
-   multiWood(siteX,ij,1,14) = multiWood(siteX,ij,1,14) + 10. !indicate type of mgmt: 1:3 = thinning types, 4=cc; comp_cc: +0.1, comp_thin: + 0.2
-
-     do ijj = 1, jj
-      multiOut(siteX,ij,6:23,ijj,2) = multiOut(siteX,ij,6:23,ijj,1)
-      multiOut(siteX,ij,26,ijj,1) = multiOut(siteX,ij,33,ijj,1) + multiOut(siteX,ij,26,ijj,1)
-      multiOut(siteX,ij,27,ijj,1) = multiOut(siteX,ij,25,ijj,1) + multiOut(siteX,ij,27,ijj,1)
-      multiOut(siteX,ij,28:29,ijj,2) = multiOut(siteX,ij,28:29,ijj,1)
-      multiOut(siteX,ij,35:nVar,ijj,2) = multiOut(siteX,ij,35:nVar,ijj,1)
-    !update biomasses and Volumes
-    multiOut(siteX,ij,24:25,ijj,2) = multiOut(siteX,ij,24:25,ijj,1) + &
-          multiOut(siteX,ij,24:25,ijj,2)
-    multiOut(siteX,ij,30:34,ijj,2) = multiOut(siteX,ij,30:34,ijj,1) + &
-          multiOut(siteX,ij,30:34,ijj,2)
-!!energCuts
-      if(energyCutX == 1.) then
-     multiWood(siteX,ij,ijj,2) = multiWood(siteX,ij,ijj,2) + (multiOut(siteX,ij,24,ijj,1) + &
-      multiOut(siteX,ij,32,ijj,1)*0.3 + multiOut(siteX,ij,31,ijj,1)* (1-harvRatio)) * energyRatio
-     species = int(max(1., multiOut(siteX,ij,4,ijj,1)))
-     multiWood(siteX,ij,ijj,1) = multiWood(siteX,ij,ijj,2) / pCrobas(2,species)
-     energyWood(1) = energyWood(1) + multiWood(siteX,ij,ijj,7) * areas(siteX)  !jh 1->6 !!energCuts !!!we are looking at volumes
-     energyWood(2) = energyWood(2) + multiWood(siteX,ij,ijj,6) * areas(siteX)  !jh 1->6 !!energCuts !!!we are looking at volumes
-
-        multiOut(siteX,ij,28,ijj,1) = max(0.,((multiOut(siteX,ij,24,ijj,1)*(1-energyRatio)  +   &
-      multiOut(siteX,ij,51,ijj,1) + multiOut(siteX,ij,28,ijj,1)) + &
-     multiOut(siteX,ij,31,ijj,1)* (1-harvRatio) * (1-energyRatio) + &
-     (0.3 * (1-energyRatio)+0.7) * multiOut(siteX,ij,32,ijj,1) *0.83 ))
-       multiOut(siteX,ij,29,ijj,1) = (0.3 * (1-energyRatio)+0.7) * multiOut(siteX,ij,32,ijj,1) *0.17 + &
-      multiOut(siteX,ij,29,ijj,1)
-    else
-     multiOut(siteX,ij,28,ijj,1) = max(0.,(multiOut(siteX,ij,24,ijj,1) + multiOut(siteX,ij,28,ijj,1) + &
-    multiOut(siteX,ij,51,ijj,1) + multiOut(siteX,ij,32,ijj,1)*0.83 + &
-    multiOut(siteX,ij,31,ijj,1)* (1-harvRatio)))
-       multiOut(siteX,ij,29,ijj,1)=multiOut(siteX,ij,32,ijj,1)*0.17+multiOut(siteX,ij,29,ijj,1) !0.1 takes into account of the stem residuals after clearcuts
-    endif
-!!energCuts
-	  ! multiOut(siteX,ij,8,ijj,1) = 0.
-	  multiOut(siteX,ij,10:17,ijj,1) = 0.
-	  multiOut(siteX,ij,19:21,ijj,1) = 0.
-	  multiOut(siteX,ij,2,ijj,1) = 0. !!newX
-      multiOut(siteX,ij,23:25,ijj,1) = 0. !#!#
-      multiOut(siteX,ij,30:36,ijj,1) = 0. !#!#
-      multiOut(siteX,ij,43,ijj,1) = 0.
-	  multiOut(siteX,ij,47:nVar,ijj,1) = 0.
-    ! multiOut(siteX,ij,38,ijj,1) = sum(multiOut(siteX,1:ij,30,ijj,2)) + &
-    ! sum(multiOut(siteX,1:ij,42,ijj,1)) + multiOut(siteX,ij,30,ijj,1)
-     enddo
-	 if((maxYears-ij)<10) then
-	  Ainit = nint(6 + 2*siteInfo(siteX,3) - 0.005*ETSy(climID,ij) + 2.25 +2.)
-	 else
-	  Ainit = nint(6 + 2*siteInfo(siteX,3) - 0.005*(sum(ETSy(climID,(ij+1):(ij+10)))/10) + 2.25 +2.)
-	 endif
-	 yearXrepl(siteX) = Ainit + ij + 1.
-	 initClearcut(siteX,5) = Ainit
-	 if(ij==1) then
-	  relBA(siteX,1:nLayers(i)) = initVar(siteX,5,1:nLayers(i))/ &
-		sum(initVar(siteX,5,1:nLayers(i)))
-	 else
-	  relBA(siteX,1:nLayers(i)) = multiOut(siteX,(ij-1),13,1:nLayers(i),1)/ &
-		sum(multiOut(siteX,(ij-1),13,1:nLayers(i),1))
-	 endif
-
-   	 ! initVar(siteX,1,1:nLayers(siteX)) = multiOut(siteX,ij,4,1:nLayers(siteX),1)
-	 ! initVar(siteX,2,1:nLayers(siteX)) = multiOut(siteX,ij,7,1:nLayers(siteX),1)
-	 ! initVar(siteX,3:6,1:nLayers(siteX)) = multiOut(siteX,ij,11:14,1:nLayers(siteX),1)
-	 ! initVar(siteX,7,1:nLayers(siteX)) = multiOut(siteX,ij,16,1:nLayers(siteX),1)
-     initVar(siteX,2,1:jj) = 0.!output(1,7,:,1)
-     initVar(siteX,3:7,1:jj) = 0.!output(1,11:14,:,1)  !!newX
-    endif !(maxState(i)>minDharv)
-   enddo !end do while
-
-  do i = 1, nSites
-if(oldLayer==1) then
- jj=max((nLayers(i)-1),1)
-else
- jj=nLayers(i)
-endif
-!jhup start deactivation
-!!start!! use stand density index to order the forests
-!ch3fix start deact (based on curr vers)
-  !  if(ClCut(i) > 0.) then
-  ! call calRein(multiOut(i,ij,:,:,1),nLayers(i),pCrobas(17,:),nVar,allSP,maxState(i))
-  !  else
-  ! maxState(i) = 0.
-  !  endif
-  !ch3fix end deact (based on curr vers)
-
-
-!!end!! use stand density index to order the forests
-
-domSp = maxloc(multiOut(siteX,ij,13,1:jj,1)) !jhup added these two lines while troubleshooting ompharv=3 (preb vers 12/10/22)
-layerX = int(domSp(1))
-
-
- domSp = maxloc(multiOut(siteX,ij,13,1:jj,1))
- layerX = int(domSp(1))
-
-	if(ClCut(i) > 0. .and. multiOut(i,ij,7,layerX,1) > 50. .and. multiOut(i,ij,7,layerX,1) < 100.) then
-	 maxState(i) = sum(multiOut(i,ij,30,1:jj,1))!!!search for site with highest volume
-	  ! maxState(i) = sum(multiOut(i,ij,17,1:jj,1))*(sqrt(sum(multiOut(i,ij,13,1:jj,1))/ &  !!!use SDI
-				! sum(multiOut(i,ij,30,1:jj,1))*4/pi)*100./25.)**(1.66)
-	else
-	 maxState(i) = 0.
-	endif
-!!end!! use stand volume to order the forests
-
-  enddo
-  n = 0
-  do while(n < nSites .and. roundWood < HarvLim(ij,1))    !!energCuts
-   n = n + 1
-   ops = maxloc(maxState)
-   siteX = int(ops(1))
-   maxState(siteX)=0.
-   	if(maxState(siteX)>minDharv .and. ClCut(siteX) > 0.) then
-	! if(ClCut(siteX) > 0.) then
-     energyCutX = energyCuts(siteX)
-   if (HarvLim(ij,2) > 0. .and.  energyWood(1) >= HarvLim(ij,2)) then    !!energCuts
-    energyCutX = 0.
-   endif
-!//jhup end deactivation (not in curr version)
-! !jhup start replacement (old)
+!  elseif(compHarv(1)==2.) then  !!!thin to compansate harvest limits
+!    !Perform thinning to compensate harvest levels
+!    !calculate SDI
+!   do i = 1, nSites
 ! !!start!! use stand volume to order the forests
-! 	if(ClCut(i) > 0. ) then
-! 	 maxState(i) = sum(multiOut(i,ij,30,1:jj,1))!!!search for site with highest DBH
+! if(oldLayer==1) then
+!  jj=max((nLayers(i)-1),1)
+! else
+!  jj=nLayers(i)
+! endif
+!
+!  domSp = maxloc(multiOut(i,ij,13,1:jj,1))
+!  layerX = int(domSp(1))
+!
+! 	if(ClCut(i) > 0. .and. multiOut(i,ij,7,layerX,1) > 50. .and. multiOut(i,ij,7,layerX,1) < 100.) then
+! 	 maxState(i) = sum(multiOut(i,ij,30,1:jj,1))!!!search for site with highest volume
+! 	! if(ClCut(i) > 0.) then
+! 	  ! maxState(i) = sum(multiOut(i,ij,17,1:jj,1))*(sqrt(sum(multiOut(i,ij,13,1:jj,1))/ &  !!!use SDI
+! 				! sum(multiOut(i,ij,30,1:jj,1))*4/pi)*100./25.)**(1.66)
+! 	else
+! 	 maxState(i) = 0.
+! 	endif
+! !!end!! use stand volume to order the forests
+!   enddo
+!   n = 0
+!   do while(n < nSites .and. roundWood < HarvLim(ij,1))    !!energCuts
+!    n = n + 1
+!    ops = maxloc(maxState)
+!    siteX = int(ops(1))
+! 	if(maxState(siteX)>0. .and. ClCut(siteX) > 0.) then
+!      energyCutX = energyCuts(siteX)
+!    if (HarvLim(ij,2) > 0. .and.  energyWood(1) >= HarvLim(ij,2)) then    !!energCuts
+!     energyCutX = 0.
+!    endif
+!
+!    !!!harvest thinFact
+! if(oldLayer==1) then
+!  jj=max((nLayers(siteX)-1),1)
+! else
+!  jj=nLayers(siteX)
+! endif
+!
+! ! if(siteInfo(siteX,1) == 454702.) write(2,*) "remaining 1", ij, multiOut(siteX,ij,11,1,1), multiOut(siteX,ij,13,1,1),&
+!   ! multiOut(siteX,ij,37,1,1)
+! ! if(siteInfo(siteX,1) == 454702.) write(2,*) "remaining 2", multiOut(siteX,ij,11,2,1), multiOut(siteX,ij,13,2,1), &
+!   ! multiOut(siteX,ij,37,2,1)
+! ! if(siteInfo(siteX,1) == 454702.) write(2,*) "remaining 3", multiOut(siteX,ij,11,3,1), multiOut(siteX,ij,13,3,1), &
+!   ! multiOut(siteX,ij,37,3,1)
+!
+!
+! ! HARVESTS: COMPENSATION THINNINGS !jhup
+! ! old flag indicator (to be removed along 'harvested' dimension)
+! multiOut(siteX,ij,1,1,2) = multiOut(siteX,ij,1,1,2) + 0.2 !!!flag for thinning compensation // !jhup: remove
+! cuttingArea(ij,7) = cuttingArea(ij,7) + areas(siteX) ! accumulate thinning area for thinning type 3 (total)
+! cuttingArea(ij,9) = cuttingArea(ij,9) + areas(siteX) ! accumulate thinning area for thinning type 3 (comp thin only)
+!
+!    do ijj = 1, jj
+!      !jh below moved behind assortment implementation, as this merges the additional  and the potential regular removals
+!      !jh for the assortments, the additional rems are needed separately...
+!     !   multiOut(siteX,ij,9:10,ijj,2) = multiOut(siteX,ij,9:10,ijj,1) * thinFact
+!     ! multiOut(siteX,ij,11:12,ijj,2) = multiOut(siteX,ij,11:12,ijj,1)
+!     ! multiOut(siteX,ij,13,ijj,2) = multiOut(siteX,ij,13,ijj,1) * thinFact
+!     ! multiOut(siteX,ij,14:16,ijj,2) = multiOut(siteX,ij,14:16,ijj,1)
+!     ! multiOut(siteX,ij,17:23,ijj,2) = multiOut(siteX,ij,17:23,ijj,1) * thinFact
+!     ! multiOut(siteX,ij,26:29,ijj,2) = multiOut(siteX,ij,26:29,ijj,1) * thinFact
+!     !
+!     ! ! if(siteInfo(siteX,1) == 454702.) write(2,*) "thinned x", multiOut(siteX,ij,11,ijj,2), multiOut(siteX,ij,13,ijj,2), &
+!     ! ! multiOut(siteX,ij,30,ijj,2)
+!     !
+!     ! !update biomasses and Volumes
+!     ! multiOut(siteX,ij,24:25,ijj,2) = multiOut(siteX,ij,24:25,ijj,1) * thinFact + &
+!     !       multiOut(siteX,ij,24:25,ijj,2)
+!     ! multiOut(siteX,ij,30:34,ijj,2) = multiOut(siteX,ij,30:34,ijj,1) * thinFact + &
+!     !       multiOut(siteX,ij,30:34,ijj,2)
+!     !
+!     ! multiOut(siteX,ij,35,ijj,2) = multiOut(siteX,ij,35,ijj,1)
+!     ! multiOut(siteX,ij,44,ijj,2) = multiOut(siteX,ij,44,ijj,1) * thinFact
+!     !
+!     ! ! Litter foliage and branches (fol and froots!?)
+!     ! multiOut(siteX,ij,26,ijj,1) = multiOut(siteX,ij,33,ijj,1) * thinFact + multiOut(siteX,ij,26,ijj,1)
+!     !   multiOut(siteX,ij,27,ijj,1) = multiOut(siteX,ij,25,ijj,1) * thinFact + multiOut(siteX,ij,27,ijj,1)
+! !/jh outcommented
+!
+! ! // END core prebas thinnings
+! !############################################
+!
+!
+! include 'assort_thin_comp.h'
+!
+!
+!   !########################################
+!
+!   !endif! assortmentswitch
+! !
+! ! !jh [relocated] updating harvested dimension; to be removed
+! !
+! ! multiOut(siteX,ij,9:10,ijj,2) = multiOut(siteX,ij,9:10,ijj,1) * thinFact
+! ! multiOut(siteX,ij,11:12,ijj,2) = multiOut(siteX,ij,11:12,ijj,1)
+! ! multiOut(siteX,ij,13,ijj,2) = multiOut(siteX,ij,13,ijj,1) * thinFact
+! ! multiOut(siteX,ij,14:16,ijj,2) = multiOut(siteX,ij,14:16,ijj,1)
+! ! multiOut(siteX,ij,17:23,ijj,2) = multiOut(siteX,ij,17:23,ijj,1) * thinFact
+! ! multiOut(siteX,ij,26:29,ijj,2) = multiOut(siteX,ij,26:29,ijj,1) * thinFact
+! !
+! ! ! if(siteInfo(siteX,1) == 454702.) write(2,*) "thinned x", multiOut(siteX,ij,11,ijj,2), multiOut(siteX,ij,13,ijj,2), &
+! ! ! multiOut(siteX,ij,30,ijj,2)
+! !
+! ! !update biomasses and Volumes
+! ! multiOut(siteX,ij,24:25,ijj,2) = multiOut(siteX,ij,24:25,ijj,1) * thinFact + &
+! !     multiOut(siteX,ij,24:25,ijj,2)
+! ! multiOut(siteX,ij,30:34,ijj,2) = multiOut(siteX,ij,30:34,ijj,1) * thinFact + &
+! !     multiOut(siteX,ij,30:34,ijj,2)
+! !
+! ! multiOut(siteX,ij,35,ijj,2) = multiOut(siteX,ij,35,ijj,1)
+! ! multiOut(siteX,ij,44,ijj,2) = multiOut(siteX,ij,44,ijj,1) * thinFact
+! !
+! ! ! Litter foliage and branches (fol and froots!?)
+! ! multiOut(siteX,ij,26,ijj,1) = multiOut(siteX,ij,33,ijj,1) * thinFact + multiOut(siteX,ij,26,ijj,1)
+! ! multiOut(siteX,ij,27,ijj,1) = multiOut(siteX,ij,25,ijj,1) * thinFact + multiOut(siteX,ij,27,ijj,1)
+! ! !/jh end reloaction
+! !
+! !
+! !
+! !
+! !
+! ! !!end energCuts
+! !     multiOut(siteX,ij,9:10,ijj,1) = multiOut(siteX,ij,9:10,ijj,1)*(1-thinFact)
+! !     multiOut(siteX,ij,13,ijj,1) = multiOut(siteX,ij,13,ijj,1)*(1-thinFact)
+! !     multiOut(siteX,ij,17:25,ijj,1) = multiOut(siteX,ij,17:25,ijj,1)*(1-thinFact)
+! !     multiOut(siteX,ij,30:33,ijj,1) = multiOut(siteX,ij,30:33,ijj,1)*(1-thinFact)
+! !     multiOut(siteX,ij,47:51,ijj,1) = multiOut(siteX,ij,47:51,ijj,1)*(1-thinFact)
+! !     multiOut(siteX,ij,53:nVar,ijj,1) = multiOut(siteX,ij,53:nVar,ijj,1)*(1-thinFact)
+! !
+! !        initVar(siteX,1,ijj) = multiOut(siteX,ij,4,jj,1)
+! !      initVar(siteX,2,ijj) = multiOut(siteX,ij,7,ijj,1)
+! !     initVar(siteX,3:6,ijj) = multiOut(siteX,ij,11:14,ijj,1)
+! !     initVar(siteX,7,ijj) = multiOut(siteX,ij,16,ijj,1)
+! ! ! if(siteInfo(siteX,1) == 454702.) write(2,*) "thinned", multiOut(siteX,ij,11,ijj,2), multiOut(siteX,ij,13,ijj,2)
+! ! ! if(siteInfo(siteX,1) == 454702.) write(2,*) "remaining", multiOut(siteX,ij,11,ijj,1), multiOut(siteX,ij,13,ijj,1)
+!
+!      enddo !ijj layers loop
+!
+!    !!!if fertilization at thinning is active,  decrease siteType
+!    if(flagFert(siteX)==0 .and. fertThin>0 .and. siteInfo(siteX,3)>3. .and. siteInfo(siteX,3)<6.) then
+!  		yearsFert = max(1,min(((nYears(siteX)) - ij-1),nYearsFert))
+!  		multiOut(siteX,(ij+1):(ij+yearsFert),3,:,1) = max(1.,siteInfo(siteX,3)-1.)
+!  		call calcAlfar(multiOut(siteX,ij,3,1:nLayers(siteX),:),initVar(siteX,1,1:nLayers(siteX)),pCrobas, &
+!  				nLayers(siteX),alfarFert,allSP,nYearsFert,npar)
+!  		multiOut(siteX,(ij+1):(ij+yearsFert),3,:,2) = alfarFert(1:yearsFert,:)
+!  		flagFert(siteX)=2
+!  	endif
+!
+!     endif !(maxState(i)>minDharv)
+!     maxState(siteX)=0. !jhup added while troubleshooting compharv=3 (from 12/10/22 prebas version)
+!    enddo !end do while
+!  elseif(compHarv(1)==3.) then  !!!thin to compensate harvest limits
+!
+! !############################################################
+! !!############################################################
+! !DEFUNCT VERSION, all the below replaced by older version (220815)
+!
+!    n = 0
+!   do while((n < nSites .and. roundWood < HarvLim(ij,1)) .and. &
+!   cuttingArea(ij,2) < cuttingArea(ij,1))
+!    n = n + 1
+!    do i = 1, nSites
+! if(oldLayer==1) then
+!  jj=max((nLayers(i)-1),1)
+! else
+!  jj=nLayers(i)
+! endif
+!   if(ClCut(i) > 0. ) then
+!    maxState(i) = maxval(multiOut(i,ij,12,1:jj,1))!!!search for site with highest DBH
+!   else
+!    maxState(i) = 0.
+!   endif
+!    enddo ! i
+!    ops = maxloc(maxState)
+!    siteX = int(ops(1))
+!    climID = int(siteInfo(siteX,2))
+!
+!   if(maxState(siteX)>minDharv .and. ClCut(siteX) > 0.) then
+!      energyCutX = energyCuts(siteX)
+!    if (HarvLim(ij,2) > 0. .and.  energyWood(1) >= HarvLim(ij,2)) then    !!energCuts
+!     energyCutX = 0.
+!    endif
+!    !if fertilization at thinning is active reset flagFert
+!    if(fertThin > 0) then
+!     flagFert(siteX) = 0
+!    endif
+!
+! !!if oldLayer scenario -> populate old layer with the dominant species and clearcut other layers
+! if(oldLayer==1) then
+!  jj=max((nLayers(siteX)-1),1)
+!  ops = maxloc(multiOut(siteX,ij,13,1:jj,1))
+!  layerX = int(ops(1))
+!
+!   !!!!calculate percentage of trees remaining after clearcut(pDomRem)
+!    call random_number(randX)
+!    pDomRem =   (randX*5.+5.)/100.* &  !!randomly sample between 5 and 10 %
+!    sum(multiOut(siteX,ij,13,1:jj,1))/multiOut(siteX,ij,13,layerX,1)
+!
+!
+!   !update old layer
+!   multiOut(siteX,ij,:,nLayers(i),1) = multiOut(siteX,ij,:,layerX,1)
+!   multiOut(siteX,ij,42,nLayers(i),1) = 0.
+!   multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),nLayers(i),1) = &
+!    multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),layerX,1) * (pDomRem)
+!   multiOut(siteX,ij,24:34,nLayers(i),1) = multiOut(siteX,ij,24:34,layerX,1) * (pDomRem)
+!   multiOut(siteX,ij,47:51,nLayers(i),1) = multiOut(siteX,ij,47:51,layerX,1) * (pDomRem)
+!     !!!if oldLayer is active import siteType and alfar from the single site simulations simulations
+!   multiOut(siteX,ij:maxYears,3,nLayers(siteX),1) = multiOut(siteX,ij,3,layerX,1)
+!   multiOut(siteX,ij:maxYears,3,nLayers(siteX),2) = multiOut(siteX,ij,3,layerX,2)
+!   !update dominant layer
+!   multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),layerX,1) = &
+!     multiOut(siteX,ij,(/9,10,13,17,18,37,38,40,43,44,53,54/),layerX,1) * (1-pDomRem)
+!   multiOut(siteX,ij,24:34,layerX,1) = multiOut(siteX,ij,24:34,layerX,1) * (1-pDomRem)
+!   multiOut(siteX,ij,47:51,layerX,1) = multiOut(siteX,ij,47:51,layerX,1) * (1-pDomRem)
+! else
+!  jj=nLayers(i)
+! endif
+! !!   !!clearcut!!
+!    cuttingArea(ij,2) = cuttingArea(ij,2) + areas(siteX) !calculate the clearcut area
+!      roundWood = roundWood + sum(multiOut(siteX,ij,30,1:jj,1)*harvRatio)*areas(siteX) !!energCuts!jh rem25
+!      multiOut(siteX,ij,37,:,1) = multiOut(siteX,ij,37,1:jj,1) + &
+!       multiOut(siteX,ij,30,1:jj,1)*harvRatio
+!      multiOut(siteX,ij,38,:,1) = multiOut(siteX,ij,38,1:jj,1) + &
+!       multiOut(siteX,ij,31,1:jj,1)*harvRatio
+!    multiOut(siteX,ij,2,1,2) = 2. !!!flag for clearcut compensation
+!    multiWood(siteX,ij,1,14) = multiWood(siteX,ij,1,14) + 10. !indicate type of mgmt: 1:3 = thinning types, 4=cc; comp_cc: +0.1, comp_thin: + 0.2
+!
+!      do ijj = 1, jj
+!       multiOut(siteX,ij,6:23,ijj,2) = multiOut(siteX,ij,6:23,ijj,1)
+!       multiOut(siteX,ij,26,ijj,1) = multiOut(siteX,ij,33,ijj,1) + multiOut(siteX,ij,26,ijj,1)
+!       multiOut(siteX,ij,27,ijj,1) = multiOut(siteX,ij,25,ijj,1) + multiOut(siteX,ij,27,ijj,1)
+!       multiOut(siteX,ij,28:29,ijj,2) = multiOut(siteX,ij,28:29,ijj,1)
+!       multiOut(siteX,ij,35:nVar,ijj,2) = multiOut(siteX,ij,35:nVar,ijj,1)
+!     !update biomasses and Volumes
+!     multiOut(siteX,ij,24:25,ijj,2) = multiOut(siteX,ij,24:25,ijj,1) + &
+!           multiOut(siteX,ij,24:25,ijj,2)
+!     multiOut(siteX,ij,30:34,ijj,2) = multiOut(siteX,ij,30:34,ijj,1) + &
+!           multiOut(siteX,ij,30:34,ijj,2)
+! !!energCuts
+!       if(energyCutX == 1.) then
+!      multiWood(siteX,ij,ijj,2) = multiWood(siteX,ij,ijj,2) + (multiOut(siteX,ij,24,ijj,1) + &
+!       multiOut(siteX,ij,32,ijj,1)*0.3 + multiOut(siteX,ij,31,ijj,1)* (1-harvRatio)) * energyRatio
+!      species = int(max(1., multiOut(siteX,ij,4,ijj,1)))
+!      multiWood(siteX,ij,ijj,1) = multiWood(siteX,ij,ijj,2) / pCrobas(2,species)
+!      energyWood(1) = energyWood(1) + multiWood(siteX,ij,ijj,7) * areas(siteX)  !jh 1->6 !!energCuts !!!we are looking at volumes
+!      energyWood(2) = energyWood(2) + multiWood(siteX,ij,ijj,6) * areas(siteX)  !jh 1->6 !!energCuts !!!we are looking at volumes
+!
+!         multiOut(siteX,ij,28,ijj,1) = max(0.,((multiOut(siteX,ij,24,ijj,1)*(1-energyRatio)  +   &
+!       multiOut(siteX,ij,51,ijj,1) + multiOut(siteX,ij,28,ijj,1)) + &
+!      multiOut(siteX,ij,31,ijj,1)* (1-harvRatio) * (1-energyRatio) + &
+!      (0.3 * (1-energyRatio)+0.7) * multiOut(siteX,ij,32,ijj,1) *0.83 ))
+!        multiOut(siteX,ij,29,ijj,1) = (0.3 * (1-energyRatio)+0.7) * multiOut(siteX,ij,32,ijj,1) *0.17 + &
+!       multiOut(siteX,ij,29,ijj,1)
+!     else
+!      multiOut(siteX,ij,28,ijj,1) = max(0.,(multiOut(siteX,ij,24,ijj,1) + multiOut(siteX,ij,28,ijj,1) + &
+!     multiOut(siteX,ij,51,ijj,1) + multiOut(siteX,ij,32,ijj,1)*0.83 + &
+!     multiOut(siteX,ij,31,ijj,1)* (1-harvRatio)))
+!        multiOut(siteX,ij,29,ijj,1)=multiOut(siteX,ij,32,ijj,1)*0.17+multiOut(siteX,ij,29,ijj,1) !0.1 takes into account of the stem residuals after clearcuts
+!     endif
+! !!energCuts
+! 	  ! multiOut(siteX,ij,8,ijj,1) = 0.
+! 	  multiOut(siteX,ij,10:17,ijj,1) = 0.
+! 	  multiOut(siteX,ij,19:21,ijj,1) = 0.
+! 	  multiOut(siteX,ij,2,ijj,1) = 0. !!newX
+!       multiOut(siteX,ij,23:25,ijj,1) = 0. !#!#
+!       multiOut(siteX,ij,30:36,ijj,1) = 0. !#!#
+!       multiOut(siteX,ij,43,ijj,1) = 0.
+! 	  multiOut(siteX,ij,47:nVar,ijj,1) = 0.
+!     ! multiOut(siteX,ij,38,ijj,1) = sum(multiOut(siteX,1:ij,30,ijj,2)) + &
+!     ! sum(multiOut(siteX,1:ij,42,ijj,1)) + multiOut(siteX,ij,30,ijj,1)
+!      enddo
+! 	 if((maxYears-ij)<10) then
+! 	  Ainit = nint(6 + 2*siteInfo(siteX,3) - 0.005*ETSy(climID,ij) + 2.25 +2.)
+! 	 else
+! 	  Ainit = nint(6 + 2*siteInfo(siteX,3) - 0.005*(sum(ETSy(climID,(ij+1):(ij+10)))/10) + 2.25 +2.)
+! 	 endif
+! 	 yearXrepl(siteX) = Ainit + ij + 1.
+! 	 initClearcut(siteX,5) = Ainit
+! 	 if(ij==1) then
+! 	  relBA(siteX,1:nLayers(i)) = initVar(siteX,5,1:nLayers(i))/ &
+! 		sum(initVar(siteX,5,1:nLayers(i)))
+! 	 else
+! 	  relBA(siteX,1:nLayers(i)) = multiOut(siteX,(ij-1),13,1:nLayers(i),1)/ &
+! 		sum(multiOut(siteX,(ij-1),13,1:nLayers(i),1))
+! 	 endif
+!
+!    	 ! initVar(siteX,1,1:nLayers(siteX)) = multiOut(siteX,ij,4,1:nLayers(siteX),1)
+! 	 ! initVar(siteX,2,1:nLayers(siteX)) = multiOut(siteX,ij,7,1:nLayers(siteX),1)
+! 	 ! initVar(siteX,3:6,1:nLayers(siteX)) = multiOut(siteX,ij,11:14,1:nLayers(siteX),1)
+! 	 ! initVar(siteX,7,1:nLayers(siteX)) = multiOut(siteX,ij,16,1:nLayers(siteX),1)
+!      initVar(siteX,2,1:jj) = 0.!output(1,7,:,1)
+!      initVar(siteX,3:7,1:jj) = 0.!output(1,11:14,:,1)  !!newX
+!     endif !(maxState(i)>minDharv)
+!    enddo !end do while
+!
+!   do i = 1, nSites
+! if(oldLayer==1) then
+!  jj=max((nLayers(i)-1),1)
+! else
+!  jj=nLayers(i)
+! endif
+! !jhup start deactivation
+! !!start!! use stand density index to order the forests
+! !ch3fix start deact (based on curr vers)
+!   !  if(ClCut(i) > 0.) then
+!   ! call calRein(multiOut(i,ij,:,:,1),nLayers(i),pCrobas(17,:),nVar,allSP,maxState(i))
+!   !  else
+!   ! maxState(i) = 0.
+!   !  endif
+!   !ch3fix end deact (based on curr vers)
+!
+!
+! !!end!! use stand density index to order the forests
+!
+! domSp = maxloc(multiOut(siteX,ij,13,1:jj,1)) !jhup added these two lines while troubleshooting ompharv=3 (preb vers 12/10/22)
+! layerX = int(domSp(1))
+!
+!
+!  domSp = maxloc(multiOut(siteX,ij,13,1:jj,1))
+!  layerX = int(domSp(1))
+!
+! 	if(ClCut(i) > 0. .and. multiOut(i,ij,7,layerX,1) > 50. .and. multiOut(i,ij,7,layerX,1) < 100.) then
+! 	 maxState(i) = sum(multiOut(i,ij,30,1:jj,1))!!!search for site with highest volume
+! 	  ! maxState(i) = sum(multiOut(i,ij,17,1:jj,1))*(sqrt(sum(multiOut(i,ij,13,1:jj,1))/ &  !!!use SDI
+! 				! sum(multiOut(i,ij,30,1:jj,1))*4/pi)*100./25.)**(1.66)
 ! 	else
 ! 	 maxState(i) = 0.
 ! 	endif
@@ -917,178 +894,201 @@ layerX = int(domSp(1))
 !
 !   enddo
 !   n = 0
-!   do while(n < nSites .and. roundWood < HarvLim(ij,1))		!!energCuts
+!   do while(n < nSites .and. roundWood < HarvLim(ij,1))    !!energCuts
 !    n = n + 1
 !    ops = maxloc(maxState)
 !    siteX = int(ops(1))
 !    maxState(siteX)=0.
-! 	if(ClCut(siteX) > 0.) then
+!    	if(maxState(siteX)>minDharv .and. ClCut(siteX) > 0.) then
+! 	! if(ClCut(siteX) > 0.) then
 !      energyCutX = energyCuts(siteX)
-! 	 if (HarvLim(ij,2) > 0. .and.  energyWood(1) >= HarvLim(ij,2)) then		!!energCuts
-! 	  energyCutX = 0.
-! 	 endif
-!    !/jhup end replacement
-
-
-
-
-   !!!harvest thinFact
-if(oldLayer==1) then
- jj=max((nLayers(siteX)-1),1)
-else
- jj=nLayers(siteX)
-endif
-
-   roundWood = roundWood + sum(multiOut(siteX,ij,30,1:jj,1)*harvRatio)* thinFact *areas(siteX) !!energCuts
-     multiOut(siteX,ij,1,1,2) = 4. !!!flag for thinning compensation
-   multiWood(siteX,ij,1,14) = multiWood(siteX,ij,1,14) + 20. !indicate type of mgmt: 1:3 = thinning types, 4=cc; comp_cc: +0.1, comp_thin: + 0.2
-   multiOut(siteX,ij,37,:,1) = multiOut(siteX,ij,37,1:jj,1) + &
-      multiOut(siteX,ij,30,1:jj,1)*harvRatio*thinFact
-   multiOut(siteX,ij,38,:,1) = multiOut(siteX,ij,38,1:jj,1) + &
-      multiOut(siteX,ij,31,1:jj,1)*harvRatio*thinFact
-     !update state of the forests
-   do ijj = 1, jj
-      multiOut(siteX,ij,9:10,ijj,2) = multiOut(siteX,ij,9:10,ijj,1) * thinFact
-    multiOut(siteX,ij,11:12,ijj,2) = multiOut(siteX,ij,11:12,ijj,1)
-    multiOut(siteX,ij,13,ijj,2) = multiOut(siteX,ij,13,ijj,1) * thinFact
-    multiOut(siteX,ij,14:16,ijj,2) = multiOut(siteX,ij,14:16,ijj,1)
-    multiOut(siteX,ij,17:23,ijj,2) = multiOut(siteX,ij,17:23,ijj,1) * thinFact
-    multiOut(siteX,ij,26:29,ijj,2) = multiOut(siteX,ij,26:29,ijj,1) * thinFact
-
-    !update biomasses and Volumes
-    multiOut(siteX,ij,24:25,ijj,2) = multiOut(siteX,ij,24:25,ijj,1) * thinFact + &
-          multiOut(siteX,ij,24:25,ijj,2)
-    multiOut(siteX,ij,30:34,ijj,2) = multiOut(siteX,ij,30:34,ijj,1) * thinFact + &
-          multiOut(siteX,ij,30:34,ijj,2)
-
-    multiOut(siteX,ij,35,ijj,2) = multiOut(siteX,ij,35,ijj,1)
-    multiOut(siteX,ij,44,ijj,2) = multiOut(siteX,ij,44,ijj,1) * thinFact
-
-    ! Litter foliage and branches
-    multiOut(siteX,ij,26,ijj,1) = multiOut(siteX,ij,33,ijj,1) * thinFact + multiOut(siteX,ij,26,ijj,1)
-      multiOut(siteX,ij,27,ijj,1) = multiOut(siteX,ij,25,ijj,1) * thinFact + multiOut(siteX,ij,27,ijj,1)
-!!energCuts
-      if(energyCutX == 1.) then
-	   multiWood(siteX,ij,ijj,2) = multiWood(siteX,ij,ijj,2) + (multiOut(siteX,ij,24,ijj,1) + &
-	    multiOut(siteX,ij,32,ijj,1)*0.3 + multiOut(siteX,ij,31,ijj,1)* (1-harvRatio)) * energyRatio * thinFact
-	   species = int(max(1., multiOut(siteX,ij,4,ijj,1)))
-	   if(pCrobas(2,species)>0.) multiWood(siteX,ij,ijj,1) = multiWood(siteX,ij,ijj,2) / pCrobas(2,species)
-     energyWood(1) = energyWood(1) + multiWood(siteX,ij,ijj,7) * areas(siteX)  !jh 1->6  !!energCuts !!!we are looking at volumes
-     energyWood(2) = energyWood(2) + multiWood(siteX,ij,ijj,6) * areas(siteX)  !jh 1->6  !!energCuts !!!we are looking at volumes
-
-	   multiOut(siteX,ij,28,ijj,1) = max(0.,((multiOut(siteX,ij,24,ijj,1)*(1-energyRatio) * thinFact +   &
-			multiOut(siteX,ij,51,ijj,1)* thinFact + multiOut(siteX,ij,28,ijj,1)) + &
-		 multiOut(siteX,ij,31,ijj,1)* (1-harvRatio) * (1-energyRatio) * thinFact + &
-		 (0.3 * (1-energyRatio)+0.7) * multiOut(siteX,ij,32,ijj,1) *0.83 * thinFact))
-       multiOut(siteX,ij,29,ijj,1) = (0.3 * (1-energyRatio)+0.7) * multiOut(siteX,ij,32,ijj,1) *0.17 * thinFact+ &
-      multiOut(siteX,ij,29,ijj,1)
-
-    else
-     multiOut(siteX,ij,28,ijj,1) = max(0.,(multiOut(siteX,ij,24,ijj,1)* thinFact + multiOut(siteX,ij,28,ijj,1) + &
-    multiOut(siteX,ij,51,ijj,1)* thinFact + multiOut(siteX,ij,32,ijj,1)*0.83* thinFact + &
-    multiOut(siteX,ij,31,ijj,1)* (1-harvRatio)* thinFact))
-       multiOut(siteX,ij,29,ijj,1)=multiOut(siteX,ij,32,ijj,1)*0.17* thinFact+multiOut(siteX,ij,29,ijj,1) !0.1 takes into account of the stem residuals after clearcuts
-    endif
-!!energCuts
-    multiOut(siteX,ij,9:10,ijj,1) = multiOut(siteX,ij,9:10,ijj,1)*(1-thinFact)
-    multiOut(siteX,ij,13,ijj,1) = multiOut(siteX,ij,13,ijj,1)*(1-thinFact)
-    multiOut(siteX,ij,17:25,ijj,1) = multiOut(siteX,ij,17:25,ijj,1)*(1-thinFact)
-    multiOut(siteX,ij,30:33,ijj,1) = multiOut(siteX,ij,30:33,ijj,1)*(1-thinFact)
-    multiOut(siteX,ij,47:51,ijj,1) = multiOut(siteX,ij,47:51,ijj,1)*(1-thinFact)
-    multiOut(siteX,ij,53:nVar,ijj,1) = multiOut(siteX,ij,53:nVar,ijj,1)*(1-thinFact)
-
-   initVar(siteX,1,ijj) = multiOut(siteX,ij,4,ijj,1)
-   initVar(siteX,2,ijj) = multiOut(siteX,ij,7,ijj,1)
-   initVar(siteX,3:6,ijj) = multiOut(siteX,ij,11:14,ijj,1)
-   initVar(siteX,7,ijj) = multiOut(siteX,ij,16,ijj,1)
-     enddo !ijj layers loop
-
-	! if(siteInfo(siteX,1)==411310.) write(1,*) ij,multiOut(siteX,ij,11,:,1)
-	! if(siteInfo(siteX,1)==35.) write(1,*) ij,multiOut(siteX,ij,11,:,1)
-
-	 	!!!if fertilization at thinning is active,  increase siteType
-	if(flagFert(siteX)==0 .and. fertThin>0 .and. siteInfo(siteX,3)>3. .and. siteInfo(siteX,3)<6.) then
-
-		yearsFert = max(1,min(((nYears(siteX)) - ij-1),nYearsFert))
-		multiOut(siteX,(ij+1):(ij+yearsFert),3,:,1) = max(1.,siteInfo(siteX,3)-1.)
-		call calcAlfar(multiOut(siteX,ij,3,1:nLayers(siteX),:),initVar(siteX,1,1:nLayers(siteX)),pCrobas, &
-				nLayers(siteX),alfarFert,allSP,nYearsFert,npar)
-		multiOut(siteX,(ij+1):(ij+yearsFert),3,:,2) = alfarFert(1:yearsFert,:)
-		flagFert(siteX)=2
-	endif
-
-	endif !(maxState(i)>minDharv)
-   enddo !end do while
-
-
- endif
-endif !roundWood < HarvLim .and. HarvLim /= 0.
-
-  !HarvLim(ij,1) = roundWood
-  !HarvLim(ij,2) = energyWood
-
-  	 multiOut(:,ij,1,1,2) = yearXrepl
-    ! open(1,file="test1.txt")
-	! write(1,*) ij, "end"
-	! close(1)
-end do !end Year loop
-
- do i = 1,nSites
-    ! open(1,file="test1.txt")
-	! write(1,*) i, "of", nSites,"loop1"
-	! close(1)
-  do ij = startSimYear, maxYears
-    do ijj = 1,nLayers(i)
-    ! multiOut(i,ij,38,ijj,1) = sum(multiOut(i,1:ij,30,ijj,2)) + &
-    ! sum(multiOut(i,1:ij,42,ijj,1)) + multiOut(i,ij,30,ijj,1)
-
-!!!!!calculate deadWood using Gompetz function (Makinen et al. 2006)!!!!
-	   if (ij==1) D = multiOut(i,ij,12,ijj,1)
-	   if (ij>1) D = multiOut(i,(ij-1),12,ijj,1)
-	   species = int(max(1.,multiOut(i,ij,4,ijj,1)))
-	    if(D > pCrobas(48,species)) then   !!!pCrobas(48,species) minimum DBH of dead trees to be included in the deadwood calculations
-		   Vmort = multiOut(i,ij,42,ijj,1)
-		   if(Vmort>0. .and. ij < maxYears)then
-			multiOut(i,ij,8,ijj,1) = Vmort + multiOut(i,ij,8,ijj,1)
-			do ki=1,(maxYears-ij)
-			 perVmort = exp(-exp(pCrobas(35,species) + pCrobas(36,species)*ki + &
-						 pCrobas(37,species)*D + pCrobas(44,species)))
-			 if(perVmort>pCrobas(49,species)) then !pCrobas(49,species) is the minimum percentage of Vmort for lower values the deadWood volume disapears
-			  multiOut(i,(ij+ki),8,ijj,1) = multiOut(i,(ij+ki),8,ijj,1) + Vmort * perVmort
-			 endif
-			enddo
-		endif
-	   endif
-
-	! !!!calculate deadWood using Gompetz function (Makinen et al. 2006)!!!!
-	! do ijj = 1,nLayers(i)
-	  ! if(output(1,8,ijj,1)>0.) then
-	  ! multiOut(i,ij,8,ijj,1) = multiOut(i,ij,8,ijj,1) + output(1,8,ijj,1)
-	  ! jj = int(output(1,4,ijj,1))
-	    ! do ki = 1,(maxYears-ij)
-			! multiOut(i,(ki+ij),8,ijj,1) = multiOut(i,(ki+ij),8,ijj,1) + output(1,8,ijj,1) * &
-				! exp(-exp(pCrobas(34,jj) + pCrobas(35,jj)*ki + pCrobas(36,jj)*output(1,12,ijj,1) + pCrobas(44,jj)))
-		! enddo
-	  ! end if
-	! enddo
-
-	  if(ij > 1.5) then
-	!compute gross growth
-	   multiOut(i,ij,43,ijj,1) = multiOut(i,ij,30,ijj,1) - multiOut(i,(ij-1),30,ijj,1) + &
-			multiOut(i,ij,37,ijj,1)/harvRatio + multiOut(i,ij,42,ijj,1)
-	  endif
-
-    enddo !ijj
-  enddo
- enddo
-  ! close(1)
-  ! close(2)
-  ! close(3)
-soilCinOut = soilC
-soilCtotInOut = soilCtot
-    ! open(1,file="test1.txt")
-	! write(1,*) i,ij,ijj,nSites, "end"
-	! close(1)
+!    if (HarvLim(ij,2) > 0. .and.  energyWood(1) >= HarvLim(ij,2)) then    !!energCuts
+!     energyCutX = 0.
+!    endif
+! !//jhup end deactivation (not in curr version)
+! ! !jhup start replacement (old)
+! ! !!start!! use stand volume to order the forests
+! ! 	if(ClCut(i) > 0. ) then
+! ! 	 maxState(i) = sum(multiOut(i,ij,30,1:jj,1))!!!search for site with highest DBH
+! ! 	else
+! ! 	 maxState(i) = 0.
+! ! 	endif
+! ! !!end!! use stand volume to order the forests
+! !
+! !   enddo
+! !   n = 0
+! !   do while(n < nSites .and. roundWood < HarvLim(ij,1))		!!energCuts
+! !    n = n + 1
+! !    ops = maxloc(maxState)
+! !    siteX = int(ops(1))
+! !    maxState(siteX)=0.
+! ! 	if(ClCut(siteX) > 0.) then
+! !      energyCutX = energyCuts(siteX)
+! ! 	 if (HarvLim(ij,2) > 0. .and.  energyWood(1) >= HarvLim(ij,2)) then		!!energCuts
+! ! 	  energyCutX = 0.
+! ! 	 endif
+! !    !/jhup end replacement
+!
+!
+!
+!
+!    !!!harvest thinFact
+! if(oldLayer==1) then
+!  jj=max((nLayers(siteX)-1),1)
+! else
+!  jj=nLayers(siteX)
+! endif
+!
+!    roundWood = roundWood + sum(multiOut(siteX,ij,30,1:jj,1)*harvRatio)* thinFact *areas(siteX) !!energCuts
+!      multiOut(siteX,ij,1,1,2) = 4. !!!flag for thinning compensation
+!    multiWood(siteX,ij,1,14) = multiWood(siteX,ij,1,14) + 20. !indicate type of mgmt: 1:3 = thinning types, 4=cc; comp_cc: +0.1, comp_thin: + 0.2
+!    multiOut(siteX,ij,37,:,1) = multiOut(siteX,ij,37,1:jj,1) + &
+!       multiOut(siteX,ij,30,1:jj,1)*harvRatio*thinFact
+!    multiOut(siteX,ij,38,:,1) = multiOut(siteX,ij,38,1:jj,1) + &
+!       multiOut(siteX,ij,31,1:jj,1)*harvRatio*thinFact
+!      !update state of the forests
+!    do ijj = 1, jj
+!       multiOut(siteX,ij,9:10,ijj,2) = multiOut(siteX,ij,9:10,ijj,1) * thinFact
+!     multiOut(siteX,ij,11:12,ijj,2) = multiOut(siteX,ij,11:12,ijj,1)
+!     multiOut(siteX,ij,13,ijj,2) = multiOut(siteX,ij,13,ijj,1) * thinFact
+!     multiOut(siteX,ij,14:16,ijj,2) = multiOut(siteX,ij,14:16,ijj,1)
+!     multiOut(siteX,ij,17:23,ijj,2) = multiOut(siteX,ij,17:23,ijj,1) * thinFact
+!     multiOut(siteX,ij,26:29,ijj,2) = multiOut(siteX,ij,26:29,ijj,1) * thinFact
+!
+!     !update biomasses and Volumes
+!     multiOut(siteX,ij,24:25,ijj,2) = multiOut(siteX,ij,24:25,ijj,1) * thinFact + &
+!           multiOut(siteX,ij,24:25,ijj,2)
+!     multiOut(siteX,ij,30:34,ijj,2) = multiOut(siteX,ij,30:34,ijj,1) * thinFact + &
+!           multiOut(siteX,ij,30:34,ijj,2)
+!
+!     multiOut(siteX,ij,35,ijj,2) = multiOut(siteX,ij,35,ijj,1)
+!     multiOut(siteX,ij,44,ijj,2) = multiOut(siteX,ij,44,ijj,1) * thinFact
+!
+!     ! Litter foliage and branches
+!     multiOut(siteX,ij,26,ijj,1) = multiOut(siteX,ij,33,ijj,1) * thinFact + multiOut(siteX,ij,26,ijj,1)
+!       multiOut(siteX,ij,27,ijj,1) = multiOut(siteX,ij,25,ijj,1) * thinFact + multiOut(siteX,ij,27,ijj,1)
+! !!energCuts
+!       if(energyCutX == 1.) then
+! 	   multiWood(siteX,ij,ijj,2) = multiWood(siteX,ij,ijj,2) + (multiOut(siteX,ij,24,ijj,1) + &
+! 	    multiOut(siteX,ij,32,ijj,1)*0.3 + multiOut(siteX,ij,31,ijj,1)* (1-harvRatio)) * energyRatio * thinFact
+! 	   species = int(max(1., multiOut(siteX,ij,4,ijj,1)))
+! 	   if(pCrobas(2,species)>0.) multiWood(siteX,ij,ijj,1) = multiWood(siteX,ij,ijj,2) / pCrobas(2,species)
+!      energyWood(1) = energyWood(1) + multiWood(siteX,ij,ijj,7) * areas(siteX)  !jh 1->6  !!energCuts !!!we are looking at volumes
+!      energyWood(2) = energyWood(2) + multiWood(siteX,ij,ijj,6) * areas(siteX)  !jh 1->6  !!energCuts !!!we are looking at volumes
+!
+! 	   multiOut(siteX,ij,28,ijj,1) = max(0.,((multiOut(siteX,ij,24,ijj,1)*(1-energyRatio) * thinFact +   &
+! 			multiOut(siteX,ij,51,ijj,1)* thinFact + multiOut(siteX,ij,28,ijj,1)) + &
+! 		 multiOut(siteX,ij,31,ijj,1)* (1-harvRatio) * (1-energyRatio) * thinFact + &
+! 		 (0.3 * (1-energyRatio)+0.7) * multiOut(siteX,ij,32,ijj,1) *0.83 * thinFact))
+!        multiOut(siteX,ij,29,ijj,1) = (0.3 * (1-energyRatio)+0.7) * multiOut(siteX,ij,32,ijj,1) *0.17 * thinFact+ &
+!       multiOut(siteX,ij,29,ijj,1)
+!
+!     else
+!      multiOut(siteX,ij,28,ijj,1) = max(0.,(multiOut(siteX,ij,24,ijj,1)* thinFact + multiOut(siteX,ij,28,ijj,1) + &
+!     multiOut(siteX,ij,51,ijj,1)* thinFact + multiOut(siteX,ij,32,ijj,1)*0.83* thinFact + &
+!     multiOut(siteX,ij,31,ijj,1)* (1-harvRatio)* thinFact))
+!        multiOut(siteX,ij,29,ijj,1)=multiOut(siteX,ij,32,ijj,1)*0.17* thinFact+multiOut(siteX,ij,29,ijj,1) !0.1 takes into account of the stem residuals after clearcuts
+!     endif
+! !!energCuts
+!     multiOut(siteX,ij,9:10,ijj,1) = multiOut(siteX,ij,9:10,ijj,1)*(1-thinFact)
+!     multiOut(siteX,ij,13,ijj,1) = multiOut(siteX,ij,13,ijj,1)*(1-thinFact)
+!     multiOut(siteX,ij,17:25,ijj,1) = multiOut(siteX,ij,17:25,ijj,1)*(1-thinFact)
+!     multiOut(siteX,ij,30:33,ijj,1) = multiOut(siteX,ij,30:33,ijj,1)*(1-thinFact)
+!     multiOut(siteX,ij,47:51,ijj,1) = multiOut(siteX,ij,47:51,ijj,1)*(1-thinFact)
+!     multiOut(siteX,ij,53:nVar,ijj,1) = multiOut(siteX,ij,53:nVar,ijj,1)*(1-thinFact)
+!
+!    initVar(siteX,1,ijj) = multiOut(siteX,ij,4,ijj,1)
+!    initVar(siteX,2,ijj) = multiOut(siteX,ij,7,ijj,1)
+!    initVar(siteX,3:6,ijj) = multiOut(siteX,ij,11:14,ijj,1)
+!    initVar(siteX,7,ijj) = multiOut(siteX,ij,16,ijj,1)
+!      enddo !ijj layers loop
+!
+! 	! if(siteInfo(siteX,1)==411310.) write(1,*) ij,multiOut(siteX,ij,11,:,1)
+! 	! if(siteInfo(siteX,1)==35.) write(1,*) ij,multiOut(siteX,ij,11,:,1)
+!
+! 	 	!!!if fertilization at thinning is active,  increase siteType
+! 	if(flagFert(siteX)==0 .and. fertThin>0 .and. siteInfo(siteX,3)>3. .and. siteInfo(siteX,3)<6.) then
+!
+! 		yearsFert = max(1,min(((nYears(siteX)) - ij-1),nYearsFert))
+! 		multiOut(siteX,(ij+1):(ij+yearsFert),3,:,1) = max(1.,siteInfo(siteX,3)-1.)
+! 		call calcAlfar(multiOut(siteX,ij,3,1:nLayers(siteX),:),initVar(siteX,1,1:nLayers(siteX)),pCrobas, &
+! 				nLayers(siteX),alfarFert,allSP,nYearsFert,npar)
+! 		multiOut(siteX,(ij+1):(ij+yearsFert),3,:,2) = alfarFert(1:yearsFert,:)
+! 		flagFert(siteX)=2
+! 	endif
+!
+! 	endif !(maxState(i)>minDharv)
+!    enddo !end do while
+!
+!
+!  endif
+! endif !roundWood < HarvLim .and. HarvLim /= 0.
+!
+!   !HarvLim(ij,1) = roundWood
+!   !HarvLim(ij,2) = energyWood
+!
+!   	 multiOut(:,ij,1,1,2) = yearXrepl
+!     ! open(1,file="test1.txt")
+! 	! write(1,*) ij, "end"
+! 	! close(1)
+! end do !end Year loop
+!
+!  do i = 1,nSites
+!     ! open(1,file="test1.txt")
+! 	! write(1,*) i, "of", nSites,"loop1"
+! 	! close(1)
+!   do ij = startSimYear, maxYears
+!     do ijj = 1,nLayers(i)
+!     ! multiOut(i,ij,38,ijj,1) = sum(multiOut(i,1:ij,30,ijj,2)) + &
+!     ! sum(multiOut(i,1:ij,42,ijj,1)) + multiOut(i,ij,30,ijj,1)
+!
+! !!!!!calculate deadWood using Gompetz function (Makinen et al. 2006)!!!!
+! 	   if (ij==1) D = multiOut(i,ij,12,ijj,1)
+! 	   if (ij>1) D = multiOut(i,(ij-1),12,ijj,1)
+! 	   species = int(max(1.,multiOut(i,ij,4,ijj,1)))
+! 	    if(D > pCrobas(48,species)) then   !!!pCrobas(48,species) minimum DBH of dead trees to be included in the deadwood calculations
+! 		   Vmort = multiOut(i,ij,42,ijj,1)
+! 		   if(Vmort>0. .and. ij < maxYears)then
+! 			multiOut(i,ij,8,ijj,1) = Vmort + multiOut(i,ij,8,ijj,1)
+! 			do ki=1,(maxYears-ij)
+! 			 perVmort = exp(-exp(pCrobas(35,species) + pCrobas(36,species)*ki + &
+! 						 pCrobas(37,species)*D + pCrobas(44,species)))
+! 			 if(perVmort>pCrobas(49,species)) then !pCrobas(49,species) is the minimum percentage of Vmort for lower values the deadWood volume disapears
+! 			  multiOut(i,(ij+ki),8,ijj,1) = multiOut(i,(ij+ki),8,ijj,1) + Vmort * perVmort
+! 			 endif
+! 			enddo
+! 		endif
+! 	   endif
+!
+! 	! !!!calculate deadWood using Gompetz function (Makinen et al. 2006)!!!!
+! 	! do ijj = 1,nLayers(i)
+! 	  ! if(output(1,8,ijj,1)>0.) then
+! 	  ! multiOut(i,ij,8,ijj,1) = multiOut(i,ij,8,ijj,1) + output(1,8,ijj,1)
+! 	  ! jj = int(output(1,4,ijj,1))
+! 	    ! do ki = 1,(maxYears-ij)
+! 			! multiOut(i,(ki+ij),8,ijj,1) = multiOut(i,(ki+ij),8,ijj,1) + output(1,8,ijj,1) * &
+! 				! exp(-exp(pCrobas(34,jj) + pCrobas(35,jj)*ki + pCrobas(36,jj)*output(1,12,ijj,1) + pCrobas(44,jj)))
+! 		! enddo
+! 	  ! end if
+! 	! enddo
+!
+! 	  if(ij > 1.5) then
+! 	!compute gross growth
+! 	   multiOut(i,ij,43,ijj,1) = multiOut(i,ij,30,ijj,1) - multiOut(i,(ij-1),30,ijj,1) + &
+! 			multiOut(i,ij,37,ijj,1)/harvRatio + multiOut(i,ij,42,ijj,1)
+! 	  endif
+!
+!     enddo !ijj
+!   enddo
+!  enddo
+!   ! close(1)
+!   ! close(2)
+!   ! close(3)
+! soilCinOut = soilC
+! soilCtotInOut = soilCtot
+!     ! open(1,file="test1.txt")
+! 	! write(1,*) i,ij,ijj,nSites, "end"
+! 	! close(1)
 
 end subroutine
 
