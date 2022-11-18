@@ -80,7 +80,7 @@ REAL (kind=8) :: par_rhow !species' wood density; not in regionprebas, but neces
 REAL (kind=8) :: siteType !species' wood density; not in regionprebas, but necessary for assortments
 REAL (kind=8) :: ets
 
-
+multiEnergyWood(1,1,1,1) = 4242.
 !jhup ASSORTMENTS: SETTINGS
 ! switch between generic/simple (1) and complex/taper+qred assortments (2)
 assortType = INT(1)
