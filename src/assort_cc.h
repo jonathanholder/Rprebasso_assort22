@@ -101,10 +101,10 @@ else if(assortType==INT(1)) then
 
   if(energyCut==1.) then
 ! energywood collection
-    energyWood(year,ij,6) = energyWood(year,ij,6) + (felled_branch + &
-      felled_croot * 0.3 + &
-      v_harvested*par_rhow * (1-harvRatio)) * energyRatio
-    energyWood(year,ij,7) = energyWood(year,ij,6)
+    energyWood(year,ij,6) = energyWood(year,ij,6) + ((felled_branch + &
+      felled_croot * 0.3)/par_rhow + &
+      v_harvested * (1-harvRatio)) * energyRatio
+    energyWood(year,ij,5) = v_harvested * (1-harvRatio)) * energyRatio
 ! litter
     S_branch = max(0.,(S_branch + felled_branch * (1-energyRatio) +  &
       (0.3 * (1-energyRatio)+0.7) * felled_croot *0.83))
@@ -113,8 +113,8 @@ else if(assortType==INT(1)) then
       v_harvested*par_rhow* (1-harvRatio)* (1-energyRatio)
 
   else ! no energywood collection
+    energyWood(year,ij,5) = 0.
     energyWood(year,ij,6) = 0.
-    energyWood(year,ij,7) = 0.
     !litter
     S_branch = max(0.,(S_branch + turnover_fw + felled_branch  +  &
        felled_croot *0.83))
@@ -126,7 +126,6 @@ else if(assortType==INT(1)) then
 energyWood(year,ij,2) = v_harvested*harvRatio          ! total roundwood
 energyWood(year,ij,3) = v_harvested*harvRatio*0.5          ! NOTE: dummy, so the Vharvested allocation works
 energyWood(year,ij,4) = v_harvested*harvRatio*0.5          !
-energyWood(year,ij,5) = v_harvested * (1-harvRatio) * energyRatio ! energywood from STEMwood (used to meet harvest demand
 energyWood(year,ij,8) = 0              ! stump (100% abg, partially included in energywood if collected)
 energyWood(year,ij,13) = 0  ! total stemwood according to Laasasenaho taper function
 energyWood(year,ij,7) = 0                          ! energywood from stumps (not applicable in thinnings)

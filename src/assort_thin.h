@@ -138,7 +138,6 @@ else if(assortType==INT(1)) then ! between generic (1) / advanced assortments (2
 
   !energyWood(year,ij,6) = energyWood(year,ij,1)! energywood total
   !energyWood(year,ij,5) = v_harvested * (1-harvRatio) * energyRatio ! energywood from STEMwood (used to meet harvest demand
-  energyWood(year,ij,6) = energyWood(year,ij,1)! energywood total
   energyWood(year,ij,5) = v_harvested * (1-harvRatio) * energyRatio  ! energywood from STEMwood (used to meet harvest demand
   energyWood(year,ij,8) = 0              ! stump (100% abg, partially included in energywood if collected)
   energyWood(year,ij,13) = 0  ! total stemwood according to Laasasenaho taper function
@@ -147,7 +146,7 @@ else if(assortType==INT(1)) then ! between generic (1) / advanced assortments (2
   energyWood(year,ij,9) = n_harvested
   energyWood(year,ij,10) = d_harvested
   energyWood(year,ij,11) = h_harvested
-  energyWood(year,ij,12) = 99.           ! quality reduction factor (share of potential sawnwood unfit for sawnwood processing)
+  energyWood(year,ij,12) = 0.           ! quality reduction factor (share of potential sawnwood unfit for sawnwood processing)
   energyWood(year,ij,14) = thinningType                 ! dummy for variable of interest
 
   stand_all(37,ij) = v_harvested*harvRatio
