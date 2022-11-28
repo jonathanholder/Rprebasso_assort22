@@ -964,17 +964,17 @@ endif !assorttype==3
    S_fol = wf_STKG + S_fol
      S_fr = W_froot + S_fr
 !jh below: outcommented and moved to include 'assort...'
-   if(energyCut==1.) then
-    energyWood(year,ij,2) = (W_branch + W_croot*0.3 + W_stem* (1-harvRatio)) * energyRatio
-    energyWood(year,ij,1) = energyWood(year,ij,2) / par_rhow
-      S_branch = max(0.,((W_branch) * (1-energyRatio) + S_branch + Wdb + &
-        W_stem* (1-harvRatio)* (1-energyRatio) + &
-        (0.3 * (1-energyRatio)+0.7) * W_croot *0.83))
-      S_wood = S_wood + (0.3 * (1-energyRatio)+0.7) * W_croot *0.17
-   else
-      S_branch = max(0.,(W_branch + Wdb + W_croot*0.83 + S_branch + W_stem* (1-harvRatio)))
-      S_wood = S_wood + W_croot*0.17!(1-harvRatio) takes into account of the stem residuals after thinnings
-   endif
+   ! if(energyCut==1.) then
+   !  energyWood(year,ij,2) = (W_branch + W_croot*0.3 + W_stem* (1-harvRatio)) * energyRatio
+   !  energyWood(year,ij,1) = energyWood(year,ij,2) / par_rhow
+   !    S_branch = max(0.,((W_branch) * (1-energyRatio) + S_branch + Wdb + &
+   !      W_stem* (1-harvRatio)* (1-energyRatio) + &
+   !      (0.3 * (1-energyRatio)+0.7) * W_croot *0.83))
+   !    S_wood = S_wood + (0.3 * (1-energyRatio)+0.7) * W_croot *0.17
+   ! else
+   !    S_branch = max(0.,(W_branch + Wdb + W_croot*0.83 + S_branch + W_stem* (1-harvRatio)))
+   !    S_wood = S_wood + W_croot*0.17!(1-harvRatio) takes into account of the stem residuals after thinnings
+   ! endif
   !/jh end outcommented
 
 
