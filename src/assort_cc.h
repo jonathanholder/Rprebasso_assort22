@@ -104,7 +104,7 @@ else if(assortType==INT(1)) then
     energyWood(year,ij,6) = energyWood(year,ij,6) + ((felled_branch + &
       felled_croot * 0.3)/par_rhow + &
       v_harvested * (1-harvRatio)) * energyRatio
-    energyWood(year,ij,5) = v_harvested * (1-harvRatio)) * energyRatio
+    energyWood(year,ij,5) = v_harvested * (1-harvRatio) * energyRatio
 ! litter
     S_branch = max(0.,(S_branch + felled_branch * (1-energyRatio) +  &
       (0.3 * (1-energyRatio)+0.7) * felled_croot *0.83))
