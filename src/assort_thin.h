@@ -2,8 +2,8 @@
 
 
 ! set fine and coarse woody litter to 0 (turnover still included by stand_all(28/29))
-S_wood = 0.
-S_branch = 0.
+! S_wood = 0.
+! S_branch = 0.
 
 ! Assigning variables for assortment/harvest residue calculations
 !   stand variables h and d are not calculated for the removed/thinned trees
