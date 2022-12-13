@@ -910,7 +910,7 @@ endif
 !jh will be included as parameters/input making this obsolete
 
 ! ! switch between generic/simple (1), complex/taper+qred assortments (2), and potential assortments for every year (3; invokes 2 as well, which in the case of harvests being conducted override the potentials)
- assortType = INT(2)
+ assortType = INT(1)
 !
 !ratio of stumps extracted if they are collected (stumpsampled=T)
 stumprecoveryrate = 0.9
