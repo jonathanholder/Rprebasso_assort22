@@ -83,7 +83,7 @@ REAL (kind=8) :: ets
 multiWood(1,1,1,1) = 4242.
 !jhup ASSORTMENTS: SETTINGS
 ! switch between generic/simple (1) and complex/taper+qred assortments (2)
-assortType = INT(2)
+assortType = INT(3)
 
 !ratio of stumps extracted if they are collected/stumpsampled=T
 stumprecoveryrate = 0.9 ! NOTE: != stumpratio (the ratio of stump harvesting conducted if prerequisites are met)
